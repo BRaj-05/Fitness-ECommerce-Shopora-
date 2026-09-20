@@ -41,8 +41,4 @@ For sensitive conduct concerns, contact the repository owner through a private c
 
 Do not publish sensitive personal information in a public issue.
 
-## Attribution
 
-This policy is inspired by the Contributor Covenant, version 2.1:
-
-https://www.contributor-covenant.org/version/2/1/code_of_conduct.html
