@@ -5,7 +5,7 @@ export const API_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export const REPOSITORY_URL =
-  "https://github.com/BRaj-05/Shopora-fitness-commerce";
+  "https://github.com/BRaj-05/Fitness-ECommerce-Shopora-";
 
 export const OWNER_NAME = "Basant Raj";
 export const OWNER_GITHUB = "https://github.com/BRaj-05";

@@ -45,7 +45,7 @@ SMTP_HOST=smtp.gmail.com                    # Your SMTP server host
 SMTP_PORT=587                               # SMTP port (587 for TLS, 465 for SSL)
 SMTP_SECURE=false                           # true for port 465, false for port 587
 SMTP_USER=your-email@gmail.com              # SMTP username/email
-SMTP_PASS=your-app-password                 # SMTP password or app-specific password
+SMTP_PASS=<your-app-password>               # SMTP password or app-specific password
 SMTP_FROM=noreply@Shopora.com               # From address for emails
 APP_BASE_URL=http://localhost:5173          # Client app URL (used in email CTA)
 ```
@@ -97,7 +97,6 @@ If using Gmail:
   - Workout Routine Tracker
   - Exercise Selection Support
   - Nearest Fitness Center Feature
-  - Fitness Chatbot
   - Premium Fitness Shopping
 - Call-to-action button: "Explore Shopora Now" (links to APP_BASE_URL)
 - Footer with copyright and additional CTA

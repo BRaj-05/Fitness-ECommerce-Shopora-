@@ -12,4 +12,4 @@ Shopora is a React + Vite + Tailwind client with a Node/Express API backed by Mo
 
 ## Repository
 
-https://github.com/BRaj-05/Shopora-fitness-commerce
+https://github.com/BRaj-05/Fitness-ECommerce-Shopora-

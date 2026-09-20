@@ -4,7 +4,7 @@ Thank you for improving Shopora.
 
 ## Project Links
 
-- Repository: https://github.com/BRaj-05/Shopora-fitness-commerce
+- Repository: https://github.com/BRaj-05/Fitness-ECommerce-Shopora-
 - Owner: https://github.com/BRaj-05
 - LinkedIn: https://www.linkedin.com/in/raj-basant/
 

@@ -4,21 +4,28 @@
 
 Shopora is a full-stack fitness commerce application built with React + Vite + Tailwind on the client and Node/Express on the server. It combines a product storefront, MongoDB-backed cart and stock reservation logic, Firebase Authentication with Google sign-in, Razorpay-verified payments, Shopora Membership, Shopora Rewards, fitness tools, plans, workouts and an admin dashboard.
 
-Repository: https://github.com/BRaj-05/Shopora-fitness-commerce
+Repository: https://github.com/BRaj-05/Fitness-ECommerce-Shopora-
 
 ## Features
 
 - React + Vite + Tailwind storefront
 - Node/Express API
 - MongoDB data layer
-- Firebase + Google sign-in
-- Razorpay server verification for product checkout
+- Firebase Google authentication
+- MongoDB + bcrypt local registration with username/email login
+- Firebase custom-token bridge and Firebase-managed browser sessions
+- 40-product MongoDB catalog across 8 product types with unique Shopora artwork
+- Product search, filters and sorting
+- Stock and reserved inventory, cart reservations and Buy Now
+- Saved shipping addresses
+- Razorpay checkout with backend-authoritative totals and HMAC/payment verification
+- Paid orders and printable invoices
 - Shopora Membership with Razorpay-backed Pro and Elite tiers
 - Shopora Rewards points and membership multipliers
-- BMI/TDEE/calorie tools
-- fitness plans/workouts
-- light/dark theme
-- premium admin dashboard
+- BMI/TDEE and calorie tools
+- Fitness plans and workout tracker
+- Responsive light/dark UI
+- Premium admin dashboard with product CRUD, restocking and image management
 - searchable recent transactions
 - invoice/print experience
 - 30-second admin polling
@@ -150,17 +157,16 @@ docs/
 scripts/
 ```
 
-## Author
+## Creator
 
-**Basant Raj**
+Shopora is developed and substantially customized by **Basant Raj**.
 
-- GitHub: https://github.com/BRaj-05
 - LinkedIn: https://www.linkedin.com/in/raj-basant/
-- Project: https://github.com/BRaj-05/Shopora-fitness-commerce
+- GitHub: https://github.com/BRaj-05
 
 ## Acknowledgement
 
-Shopora was developed by extending an MIT-licensed open-source foundation and then substantially redesigned and expanded. See `LICENSE` for the retained license notice.
+Shopora was developed and substantially customized by Basant Raj using an MIT-licensed open-source foundation. The original license notice is retained in LICENSE.
 
 ## License
 
