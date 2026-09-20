@@ -1,0 +1,377 @@
+const express = require('express');
+const router = express.Router();
+const Product = require('../models/Product');
+const crypto = require('crypto');
+const cache = require('../lib/cache');
+const multer =
+  require("multer");
+
+const streamifier =
+  require("streamifier");
+
+const cloudinary =
+  require("../lib/cloudinary");
+
+// Your New Constant Import
+const { LOW_STOCK_THRESHOLD } = require('../config/constants');
+
+// Parth's New Security & Validation Imports
+const verifyFirebaseToken = require('../middleware/verifyFirebaseToken');
+const verifyAdmin = require('../middleware/verifyAdmin');
+const validateRequest = require('../middleware/validateRequest');
+const { createProductSchema, updateProductSchema } = require('../validation/requestSchemas');
+
+const productImageUpload =
+  multer({
+    storage:
+      multer.memoryStorage(),
+
+    limits: {
+      fileSize:
+        5 *
+        1024 *
+        1024,
+    },
+
+    fileFilter:
+      (_req, file, cb) => {
+        if (
+          file.mimetype?.startsWith(
+            "image/",
+          )
+        ) {
+          cb(null, true);
+        } else {
+          cb(
+            new Error(
+              "Only image files are allowed",
+            ),
+          );
+        }
+      },
+  });
+
+/**
+ * @route   GET /api/products
+ * @desc    Returns all products sorted by productId in ascending order
+ * @access  Public
+ */
+router.get('/', async (req, res) => {
+  try {
+    // Query parameters
+    const all = req.query.all === 'true';
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 24;
+    const category = req.query.category;
+    const type = req.query.type;
+    const search = req.query.search;
+    const sort = req.query.sort || 'productId_asc';
+    const fields = req.query.fields; // comma separated
+
+    // Build mongoose filter
+    const filter = {};
+    if (category && category !== 'all') filter.category = category;
+    if (type && type !== "all") {
+      filter.type = type;
+    }
+    if (search) {
+      const escaped = String(search)
+        .trim()
+        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+      if (escaped) {
+        const regex = new RegExp(escaped, "i");
+
+        filter.$or = [
+          { name: regex },
+          { brand: regex },
+          { type: regex },
+          { category: regex },
+        ];
+      }
+    }
+
+    // Projection
+    let projection = null;
+    if (fields) {
+      projection = {};
+      fields.split(',').forEach(f => { projection[f.trim()] = 1; });
+    }
+
+    // Sort mapping
+    const [sortField, sortDir] = sort.split('_');
+    const sortMap = { asc: 1, desc: -1 };
+    const sortObj = {};
+    sortObj[sortField || 'productId'] = sortMap[sortDir] || 1;
+
+    // Backward compatible: return all when ?all=true
+    if (all) {
+      const products = await Product.find(filter, projection).sort(sortObj).lean();
+      return res.json(products);
+    }
+
+    // Cache key based on query
+    const cacheKeyObj = {
+      page,
+      limit,
+      category,
+      type,
+      search,
+      sort,
+      fields,
+    };
+    const cacheKey = `products:${crypto.createHash('md5').update(JSON.stringify(cacheKeyObj)).digest('hex')}`;
+
+    // Try cache
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      res.set('X-Cache', 'HIT');
+      const totalCount = (cached.payload && cached.payload.meta && cached.payload.meta.total) ? cached.payload.meta.total : 0;
+      res.set('X-Total-Count', String(totalCount));
+      res.set('ETag', cached.etag);
+      // Conditional request handling
+      const ifNoneMatch = req.headers['if-none-match'];
+      if (ifNoneMatch && ifNoneMatch === cached.etag) return res.status(304).end();
+      return res.json(cached.payload);
+    }
+
+    const skip = (page - 1) * limit;
+    const [products, total] = await Promise.all([
+      Product.find(filter, projection).sort(sortObj).skip(skip).limit(limit).lean(),
+      Product.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+    const payload = {
+      data: products,
+      meta: { page, limit, total, totalPages },
+      links: {
+        next: page < totalPages ? `/api/products?page=${page + 1}&limit=${limit}` : null,
+        prev: page > 1 ? `/api/products?page=${page - 1}&limit=${limit}` : null,
+      },
+    };
+
+    const etag = crypto.createHash('md5').update(JSON.stringify(payload)).digest('hex');
+    // store in cache
+    await cache.set(cacheKey, { payload, etag }, Number(process.env.PRODUCTS_CACHE_TTL || 60));
+
+    res.set('X-Cache', 'MISS');
+    res.set('X-Total-Count', String(total));
+    res.set('ETag', etag);
+    // Link header (RFC5988) for pagination
+    const linkParts = [];
+    const baseUrl = `/api/products?limit=${limit}`;
+    if (page < totalPages) linkParts.push(`<${baseUrl}&page=${page + 1}>; rel="next"`);
+    if (page > 1) linkParts.push(`<${baseUrl}&page=${page - 1}>; rel="prev"`);
+    if (linkParts.length) res.set('Link', linkParts.join(', '));
+
+    // Conditional request: If client sent If-None-Match
+    const ifNoneMatch = req.headers['if-none-match'];
+    if (ifNoneMatch && ifNoneMatch === etag) return res.status(304).end();
+
+    return res.json(payload);
+  } catch (err) {
+    console.error('[products] GET /api/products error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * @route   GET /api/products/low-stock
+ * @desc    Returns all products where available stock (stock - reserved) is below threshold of 5
+ * @access  Public
+ */
+
+router.get('/low-stock', async (req, res) => {
+  try {
+    // only check products where stock is not null
+    const products = await Product.find({ stock: { $ne: null } });
+    const lowStock = products.filter(p => (p.stock - p.reserved) < LOW_STOCK_THRESHOLD);
+    res.json(lowStock);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post(
+  "/upload-image",
+  verifyFirebaseToken,
+  verifyAdmin,
+  productImageUpload.single(
+    "image",
+  ),
+  async (req, res) => {
+    if (
+      !process.env
+        .CLOUDINARY_CLOUD_NAME ||
+      !process.env
+        .CLOUDINARY_API_KEY ||
+      !process.env
+        .CLOUDINARY_API_SECRET
+    ) {
+      return res
+        .status(503)
+        .json({
+          error:
+            "Cloudinary is not configured. Use a local /products path or HTTPS image URL instead.",
+        });
+    }
+
+    if (
+      !req.file?.buffer
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Image file is required",
+        });
+    }
+
+    try {
+      const result =
+        await new Promise(
+          (
+            resolve,
+            reject,
+          ) => {
+            const stream =
+              cloudinary.uploader.upload_stream(
+                {
+                  folder:
+                    "shopora/products",
+                  resource_type:
+                    "image",
+                },
+                (
+                  error,
+                  uploaded,
+                ) => {
+                  if (error) {
+                    reject(
+                      error,
+                    );
+                  } else {
+                    resolve(
+                      uploaded,
+                    );
+                  }
+                },
+              );
+
+            streamifier
+              .createReadStream(
+                req.file.buffer,
+              )
+              .pipe(
+                stream,
+              );
+          },
+        );
+
+      return res.json({
+        imageUrl:
+          result.secure_url,
+      });
+    } catch (error) {
+      console.error(
+        "Product image upload failed:",
+        error,
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Unable to upload product image",
+        });
+    }
+  },
+);
+
+/**
+ * @route   GET /api/products/:id
+ * @desc    Returns a single product by its productId
+ * @access  Public
+ */
+// GET /api/products/:id - get product by productId
+router.get('/:id', async (req, res) => {
+  const productId = Number(req.params.id);
+
+  if (isNaN(productId)) {
+    return res.status(400).json({ error: 'Invalid product ID. It must be a number.' });
+  }
+
+  try {
+    const product = await Product.findOne({ productId });
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * @route   POST /api/products
+ * @desc    Creates a new product; body: full product object including unique productId
+ * @access  Private (Admin)
+ */
+router.post('/', verifyFirebaseToken, verifyAdmin, validateRequest(createProductSchema), async (req, res) => {
+  try {
+    const body = req.body;
+    const existing = await Product.findOne({ productId: body.productId });
+    if (existing) return res.status(400).json({ error: 'productId already exists' });
+    const p = new Product(body);
+    await p.save();
+    // invalidate product caches
+    try { await cache.delPattern('products:'); } catch (e) { }
+    res.status(201).json(p);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * @route   PUT /api/products/:id
+ * @desc    Updates an existing product by productId; body: fields to update
+ * @access  Private (Admin)
+ */
+router.put('/:id', verifyFirebaseToken, verifyAdmin, validateRequest(updateProductSchema), async (req, res) => {
+  const productId = Number(req.params.id);
+
+  if (isNaN(productId)) {
+    return res.status(400).json({ error: 'Invalid product ID. It must be a number.' });
+  }
+
+  try {
+    const updated = await Product.findOneAndUpdate({ productId }, req.body, { returnDocument: 'after' });
+    if (!updated) return res.status(404).json({ error: 'Product not found' });
+    try { await cache.delPattern('products:'); } catch (e) { }
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * @route   DELETE /api/products/:id
+ * @desc    Deletes a product by its productId
+ * @access  Private (Admin)
+ */
+
+router.delete('/:id', verifyFirebaseToken, verifyAdmin, async (req, res) => {
+  const productId = Number(req.params.id);
+
+  if (isNaN(productId)) {
+    return res.status(400).json({ error: 'Invalid product ID. It must be a number.' });
+  }
+  try {
+    const deleted = await Product.findOneAndDelete({ productId });
+    try { await cache.delPattern('products:'); } catch (e) { }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+module.exports = router;

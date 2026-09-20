@@ -1,0 +1,393 @@
+﻿// src/pages/Checkout.jsx
+import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../auth/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { fmt } from "../utils/formatters";
+import { getAuthHeaders } from "../utils/getAuthHeaders";
+import Navbar from "../components/Navbar";
+import SkeletonItem from "../components/SkeletonItem";
+import SkeletonSummary from "../components/SkeletonSummary";
+import AddressSelector from "../components/AddressSelector";
+import ProductVisual from "../components/ProductVisual";
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+export default function Checkout() {
+  const navigate = useNavigate();
+  const abortRef = useRef(null);
+
+  const [items, setItems] = useState([]);
+  const [loadingCart, setLoadingCart] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [cartError, setCartError] = useState(null);
+  const [profileError, setProfileError] = useState(null);
+  const [discountEligible, setDiscountEligible] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState(10);
+  const [profile, setProfile] = useState(null);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [membership, setMembership] = useState(null);
+
+  useEffect(() => { document.title = "My Cart | Shopora"; }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const { signal } = controller;
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) { navigate("/auth"); return; }
+      const userId = user.uid;
+
+      // -- Fetch cart + products together ----------------------------------
+      setLoadingCart(true);
+      setCartError(null);
+
+      try {
+        const headers = await getAuthHeaders();
+
+        const [cartRes, prodRes, discountRes, membershipRes] = await Promise.all([
+          fetch(`${API}/api/cart/${userId}`, { headers, credentials: "include" }),
+          fetch(`${API}/api/products?all=true`),
+          fetch(`${API}/api/user/discount-status/${userId}`, { headers, credentials: "include" }),
+          fetch(`${API}/api/membership/status/${userId}`, { headers, credentials: "include" }),
+        ]);
+
+        if (!cartRes.ok) throw new Error("Failed to fetch cart");
+        if (!prodRes.ok) throw new Error("Failed to fetch products");
+
+        const cart = await cartRes.json();
+        const products = await prodRes.json();
+
+        if (discountRes.ok) {
+          const d = await discountRes.json();
+          setDiscountEligible(d.eligible);
+          setDiscountPercent(d.discountPercent ?? 10);
+        }
+
+        if (membershipRes.ok) {
+          setMembership(await membershipRes.json());
+        }
+
+        if (cart.items?.length) {
+          const productMap = Object.fromEntries(products.map(p => [p.productId, p]));
+          const enriched = cart.items
+            .map(item => ({ ...item, product: productMap[item.productId] }))
+            .filter(item => item.product);
+          setItems(enriched);
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        setCartError(err.message);
+      } finally {
+        setLoadingCart(false);
+      }
+
+      // -- Fetch profile independently so cart still renders if this fails --
+      setLoadingProfile(true);
+      setProfileError(null);
+
+      try {
+        const headers = await getAuthHeaders();
+        const profileRes = await fetch(`${API}/api/user/profile/${userId}`, {
+          headers, credentials: "include", signal,
+        });
+
+        if (!profileRes.ok) throw new Error("Failed to load profile");
+
+        const p = await profileRes.json();
+        setProfile(p);
+        const def = p?.defaultAddressId
+          ? (p.addresses || []).find(a => a.id === p.defaultAddressId)
+          : null;
+        setSelectedAddress(def || p?.addresses?.[0] || null);
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        setProfileError("Couldn't load your saved addresses. You can still view your order.");
+      } finally {
+        setLoadingProfile(false);
+      }
+    });
+
+    return () => {
+      controller.abort();
+      unsubscribe();
+    };
+  }, [navigate]);
+
+  const subtotal = items.reduce((sum, { product, quantity }) => sum + product.price * quantity, 0);
+  const discountAmt = discountEligible ? Math.round(subtotal * discountPercent / 100) : 0;
+  const total = subtotal - discountAmt;
+
+  const handleProceed = () => {
+    navigate("/payment", {
+      state: {
+        items, total, subtotal, discountAmt,
+        discountPercent: discountEligible ? discountPercent : 0,
+        discountApplied: discountEligible,
+        address: selectedAddress,
+      },
+    });
+  };
+
+  // Full-page cart error
+  if (!loadingCart && cartError) return (
+    <PageShell menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
+      <ErrorMsg msg={cartError} />
+    </PageShell>
+  );
+
+  // Empty cart (only after loading done)
+  if (!loadingCart && !cartError && !items.length) return (
+    <PageShell menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
+      <EmptyCart navigate={navigate} />
+    </PageShell>
+  );
+
+  return (
+    <PageShell menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
+      <style>{`
+        
+      `}</style>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-12">
+
+        {/* Back + heading */}
+        <div className="mb-8 sm:mb-10">
+          <button
+            onClick={() => navigate("/shop")}
+            className="mb-5 flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] px-4 py-2.5 text-sm text-[var(--lux-muted)] transition hover:bg-[var(--lux-soft)] hover:text-[var(--lux-ink)] sm:mb-6 sm:px-5"
+            aria-label="Back to shop"
+          >
+            <span className="transition-transform duration-200 group-hover:-translate-x-1">{"<-"}</span>
+            Back to Shop
+          </button>
+
+          <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-2">Review</p>
+          <h1
+            style={{ fontFamily: "Manrope, Inter, sans-serif" }}
+            className="text-3xl sm:text-4xl md:text-5xl text-stone-900"
+          >
+            Your Order
+          </h1>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+
+          {/* -- Order summary -- */}
+          <div className="lg:col-span-1 order-first lg:order-last">
+            {loadingProfile && !profile ? (
+              <SkeletonSummary />
+            ) : (
+              <div className="rounded-2xl bg-[#0f1115] p-6 sm:p-8 lg:sticky lg:top-24">
+                <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-5 sm:mb-6">Summary</p>
+
+                {/* Profile error inline */}
+                {profileError && (
+                  <div className="bg-stone-800 border border-stone-700 rounded-lg p-3 mb-4">
+                    <p className="text-xs text-stone-400">{profileError}</p>
+                  </div>
+                )}
+
+                {/* Address selector */}
+                {!profileError && (
+                  <div className="mb-5">
+                    <AddressSelector
+                      addresses={profile?.addresses || []}
+                      selectedAddressId={selectedAddress?.id}
+                      onSelect={setSelectedAddress}
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-3 mb-5 sm:mb-6">
+                  <div className="flex justify-between text-sm text-stone-300">
+                    <span>Subtotal ({items.length} item{items.length > 1 ? "s" : ""})</span>
+                    <span>{fmt(subtotal)}</span>
+                  </div>
+                  {discountEligible && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-stone-400">Welcome {discountPercent}% off</span>
+                      <span className="text-stone-300">-{fmt(discountAmt)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm text-stone-300">
+                    <span>Shipping</span>
+                    <span className="text-stone-400">Free</span>
+                  </div>
+                  <div className="h-px bg-stone-700 my-2" />
+                  {membership && membership.tier !== "starter" && (
+                    <div className="rounded-xl border border-indigo-400/20 bg-indigo-400/10 px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-semibold text-indigo-200">
+                          {membership.name} member
+                        </span>
+                        <span className="text-xs font-bold text-emerald-300">
+                          {membership.rewardMultiplier}x rewards
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Your Shopora Rewards multiplier is applied after verified payment.
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-white font-medium">Total</span>
+                    <span
+                      style={{ fontFamily: "Manrope, Inter, sans-serif" }}
+                      className="text-2xl sm:text-3xl text-white"
+                    >
+                      {fmt(total)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* No address warning */}
+                {!selectedAddress && !profileError && (
+                  <p className="text-xs text-red-400 mb-3" role="alert">
+                    Select a shipping address to continue.
+                  </p>
+                )}
+
+                <button
+                  onClick={handleProceed}
+                  disabled={!selectedAddress}
+                  aria-disabled={!selectedAddress}
+                  aria-label={selectedAddress ? "Proceed to payment" : "Select a shipping address to proceed"}
+                  className={`w-full text-sm px-8 py-3.5 rounded-xl transition-colors
+                             font-medium min-h-12 focus:outline-none focus:ring-2
+                             focus:ring-white focus:ring-offset-2 focus:ring-offset-stone-900
+                             ${selectedAddress
+                      ? 'bg-white text-stone-900 hover:bg-stone-100 cursor-pointer'
+                      : 'bg-stone-700 text-stone-500 cursor-not-allowed'
+                    }`}
+                >
+                  Proceed to Payment
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* -- Product list -- */}
+          <div className="lg:col-span-2 space-y-3 sm:space-y-4 order-last lg:order-first">
+            {loadingCart ? (
+              <>
+                <SkeletonItem />
+                <SkeletonItem />
+                <SkeletonItem />
+              </>
+            ) : (
+              <>
+                {items.map(({ product, quantity }) => (
+                  <div
+                    key={product.productId}
+                    className="lux-admin-card flex gap-3 p-4 transition-all duration-300 hover:shadow-lg sm:gap-5 sm:p-6"
+                  >
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[var(--lux-soft)] sm:h-24 sm:w-24">
+                      <ProductVisual product={product} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] tracking-[0.15em] uppercase text-stone-400 mb-1">
+                        {product.brand}
+                      </p>
+                      <h3
+                        style={{ fontFamily: "Manrope, Inter, sans-serif" }}
+                        className="text-base sm:text-xl text-stone-900 leading-tight mb-1 sm:mb-2
+                                   line-clamp-2 sm:truncate"
+                      >
+                        {product.name}
+                      </h3>
+                      {product.badge && (
+                        <span className="text-[10px] tracking-widest uppercase bg-stone-900
+                                         text-white px-2.5 py-1 rounded-full">
+                          {product.badge}
+                        </span>
+                      )}
+                      {/* Mobile price */}
+                      <div className="mt-2 sm:hidden">
+                        <p className="text-xs text-stone-400">Qty {quantity}</p>
+                        <p
+                          style={{ fontFamily: "Manrope, Inter, sans-serif" }}
+                          className="text-lg text-stone-900"
+                        >
+                          {fmt(product.price * quantity)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Desktop price */}
+                    <div className="text-right shrink-0 hidden sm:block">
+                      <p className="text-xs text-stone-400 mb-1">Qty {quantity}</p>
+                      <p
+                        style={{ fontFamily: "Manrope, Inter, sans-serif" }}
+                        className="text-2xl text-stone-900"
+                      >
+                        {fmt(product.price * quantity)}
+                      </p>
+                      {product.originalPrice > product.price && (
+                        <p className="text-xs text-stone-400 line-through">
+                          {fmt(product.originalPrice * quantity)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Welcome discount callout */}
+                {discountEligible && (
+                  <div className="bg-stone-100 border border-stone-200 rounded-2xl px-4 sm:px-6 py-4
+                                  flex items-center gap-3 sm:gap-4">
+                    <span className="text-stone-900 text-lg shrink-0" aria-hidden="true">OK</span>
+                    <div>
+                      <p className="text-sm font-medium text-stone-900">Welcome discount applied</p>
+                      <p className="text-xs text-stone-500 mt-0.5">
+                        {discountPercent}% off your first order - saving you {fmt(discountAmt)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
+function PageShell({ children, menuOpen, setMenuOpen }) {
+  return (
+    <div className="min-h-screen bg-[var(--lux-bg)] text-[var(--lux-ink)]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <Navbar variant="home" menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+      {children}
+    </div>
+  );
+}
+
+function ErrorMsg({ msg }) {
+  return (
+    <div className="max-w-md mx-auto mt-16 sm:mt-24 bg-red-50 border border-red-100
+                    rounded-2xl p-6 sm:p-8 text-center">
+      <p className="text-red-600 text-sm" role="alert">{msg}</p>
+    </div>
+  );
+}
+
+function EmptyCart({ navigate }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-64 text-center gap-4 px-4">
+      <p className="text-4xl text-stone-300" aria-hidden="true">None</p>
+      <p className="text-stone-500 text-sm">Your cart is empty</p>
+      <button
+        onClick={() => navigate("/shop")}
+        className="bg-stone-900 text-white text-sm px-8 py-3 rounded-full
+                   hover:bg-stone-700 transition-colors min-h-11"
+        aria-label="Continue shopping"
+      >
+        Continue Shopping
+      </button>
+    </div>
+  );
+}

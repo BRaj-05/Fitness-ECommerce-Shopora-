@@ -1,0 +1,18 @@
+﻿# Shopora community welcome config
+
+newIssueWelcomeComment: >
+  Thanks for opening your first issue in Shopora.
+
+  Please include a clear description, steps to reproduce, and screenshots when helpful.
+
+newPRWelcomeComment: >
+  Welcome to Shopora.
+
+  Before requesting review, please ensure the app builds, relevant tests pass, and UI changes include screenshots when helpful.
+
+firstPRMergeComment: >
+  Congratulations on getting your first PR merged into Shopora.
+
+  Thank you for helping improve the project.
+
+  Repository: https://github.com/BRaj-05/Shopora-fitness-commerce
