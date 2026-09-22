@@ -4,7 +4,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import Navbar from "../components/Navbar";
 import CartDrawer from "../components/CartDrawer";
@@ -67,6 +67,7 @@ function enrichCart(cartDoc, products) {
 
 export default function ShopPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
   const [products, setProducts] = useState([]);
@@ -81,6 +82,11 @@ export default function ShopPage() {
   const [type, setType] = useState("All");
   const [sort, setSort] =
     useState("featured");
+
+  useEffect(() => {
+    const requestedType = searchParams.get("type");
+    if (requestedType && PRODUCT_TYPES.includes(requestedType)) setType(requestedType);
+  }, [searchParams]);
 
   const [cartOpen, setCartOpen] =
     useState(false);

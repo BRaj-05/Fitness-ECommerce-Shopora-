@@ -68,6 +68,40 @@ async function adjustReserved(productId, delta, session = null) {
   return updated;
 }
 
+// A cart can outlive legacy reservation data. Release any remaining reserved
+// units without allowing the product count to become negative.
+async function releaseReserved(productId, quantity, session = null) {
+  const updated = await Product.findOneAndUpdate(
+    { productId: Number(productId) },
+    [{
+      $set: {
+        reserved: {
+          $max: [
+            0,
+            {
+              $subtract: [
+                { $ifNull: ['$reserved', 0] },
+                Number(quantity),
+              ],
+            },
+          ],
+        },
+      },
+    }],
+    {
+      returnDocument: 'after',
+      updatePipeline: true,
+      ...(session ? { session } : {}),
+    }
+  );
+
+  if (!updated) {
+    throw new Error('Failed to release reserved stock: product not found');
+  }
+
+  return updated;
+}
+
 // Helper: check that the token uid matches the userId in the route
 function checkOwnership(req, res) {
   if (req.user.uid !== req.params.userId) {
@@ -160,7 +194,7 @@ router.post('/:userId/remove', verifyFirebaseToken,validateRequest(cartRemoveSch
     cart.items[itemIdx].quantity -= removeQty;
     if (cart.items[itemIdx].quantity <= 0) cart.items.splice(itemIdx, 1);
 
-    await adjustReserved(productId, -removeQty);
+    await releaseReserved(productId, removeQty);
     await cart.save();
     const fresh = await Cart.findOne({ userId });
     res.json(fresh);
@@ -184,7 +218,7 @@ router.delete('/:userId', verifyFirebaseToken, async (req, res) => {
     if (!cart) return fail(res, 'Cart not found', 404);
 
     for (const item of cart.items) {
-      await adjustReserved(item.productId, -item.quantity);
+      await releaseReserved(item.productId, item.quantity);
     }
 
     cart.items = [];
@@ -199,3 +233,4 @@ router.delete('/:userId', verifyFirebaseToken, async (req, res) => {
 module.exports = router;
 // Named export for integration tests (server/tests/cart.reserved.test.js)
 module.exports.adjustReserved = adjustReserved;
+module.exports.releaseReserved = releaseReserved;

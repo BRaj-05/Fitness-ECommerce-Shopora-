@@ -16,8 +16,7 @@ const cloudinary =
 const { LOW_STOCK_THRESHOLD } = require('../config/constants');
 
 // Parth's New Security & Validation Imports
-const verifyFirebaseToken = require('../middleware/verifyFirebaseToken');
-const verifyAdmin = require('../middleware/verifyAdmin');
+const verifyAdminRequest = require('../middleware/verifyAdminRequest');
 const validateRequest = require('../middleware/validateRequest');
 const { createProductSchema, updateProductSchema } = require('../validation/requestSchemas');
 
@@ -195,8 +194,7 @@ router.get('/low-stock', async (req, res) => {
 
 router.post(
   "/upload-image",
-  verifyFirebaseToken,
-  verifyAdmin,
+  verifyAdminRequest,
   productImageUpload.single(
     "image",
   ),
@@ -316,7 +314,7 @@ router.get('/:id', async (req, res) => {
  * @desc    Creates a new product; body: full product object including unique productId
  * @access  Private (Admin)
  */
-router.post('/', verifyFirebaseToken, verifyAdmin, validateRequest(createProductSchema), async (req, res) => {
+router.post('/', verifyAdminRequest, validateRequest(createProductSchema), async (req, res) => {
   try {
     const body = req.body;
     const existing = await Product.findOne({ productId: body.productId });
@@ -336,7 +334,7 @@ router.post('/', verifyFirebaseToken, verifyAdmin, validateRequest(createProduct
  * @desc    Updates an existing product by productId; body: fields to update
  * @access  Private (Admin)
  */
-router.put('/:id', verifyFirebaseToken, verifyAdmin, validateRequest(updateProductSchema), async (req, res) => {
+router.put('/:id', verifyAdminRequest, validateRequest(updateProductSchema), async (req, res) => {
   const productId = Number(req.params.id);
 
   if (isNaN(productId)) {
@@ -359,7 +357,7 @@ router.put('/:id', verifyFirebaseToken, verifyAdmin, validateRequest(updateProdu
  * @access  Private (Admin)
  */
 
-router.delete('/:id', verifyFirebaseToken, verifyAdmin, async (req, res) => {
+router.delete('/:id', verifyAdminRequest, async (req, res) => {
   const productId = Number(req.params.id);
 
   if (isNaN(productId)) {

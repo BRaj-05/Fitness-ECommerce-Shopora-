@@ -7,6 +7,7 @@
 import { useNavigate } from "react-router-dom";
 import { auth } from "../auth/firebase";
 import { API_URL } from "../config/app";
+import ProductImage from "./ProductImage";
 
 const STATIC_COMMANDS = [
   {
@@ -269,6 +270,7 @@ export default function CommandPalette({
             }`,
             icon: "Go",
             type: "product",
+            product,
           }))
       : [];
 
@@ -394,7 +396,9 @@ export default function CommandPalette({
                       : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                   }`}
                 >
-                  <span
+                  {item.type === "product" ? (
+                    <ProductImage product={item.product} className="h-9 w-9 shrink-0 rounded-xl" />
+                  ) : <span
                     className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-xs font-extrabold ${
                       item.type === "product"
                         ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"
@@ -402,7 +406,7 @@ export default function CommandPalette({
                     }`}
                   >
                     {item.icon}
-                  </span>
+                  </span>}
 
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">

@@ -10,10 +10,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Client Deployment
-        run: curl -X POST "${{ secrets.VERCEL_CLIENT_DEPLOY_HOOK }}"
+        if: ${{ secrets.VERCEL_CLIENT_DEPLOY_HOOK != '' }}
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_CLIENT_DEPLOY_HOOK }}
+        run: curl --fail-with-body --request POST "$DEPLOY_HOOK"
+
+      - name: Skip Client Deployment
+        if: ${{ secrets.VERCEL_CLIENT_DEPLOY_HOOK == '' }}
+        run: echo "Client deploy hook not configured - skipping deployment."
 
   deploy-server:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Server Deployment
-        run: curl -X POST "${{ secrets.VERCEL_SERVER_DEPLOY_HOOK }}"
+        if: ${{ secrets.VERCEL_SERVER_DEPLOY_HOOK != '' }}
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_SERVER_DEPLOY_HOOK }}
+        run: curl --fail-with-body --request POST "$DEPLOY_HOOK"
+
+      - name: Skip Server Deployment
+        if: ${{ secrets.VERCEL_SERVER_DEPLOY_HOOK == '' }}
+        run: echo "Server deploy hook not configured - skipping deployment."

@@ -18,3 +18,5 @@ SHOPORA_*_POLISH*.md
 node_modules/
 dist/
 build/
+scripts/.image-review/
+scripts/.pexels-cache/

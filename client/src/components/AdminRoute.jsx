@@ -1,22 +1,22 @@
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-
-import { useAuth } from "../auth/useAuth";
-import { useAdminAccess } from "../auth/useAdminAccess";
+import { API_URL } from "../config/app";
 
 export default function AdminRoute({
   children,
 }) {
-  const {
-    user,
-    loading,
-  } = useAuth();
+  const [state, setState] = useState("checking");
 
-  const {
-    checking,
-    allowed,
-  } = useAdminAccess();
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_URL}/api/admin/session`, { credentials: "include" })
+      .then((response) => response.json())
+      .then((data) => { if (active) setState(data.authenticated ? "allowed" : "denied"); })
+      .catch(() => { if (active) setState("denied"); });
+    return () => { active = false; };
+  }, []);
 
-  if (loading || (user && checking)) {
+  if (state === "checking") {
     return (
       <div className="grid min-h-screen place-items-center bg-stone-50 dark:bg-slate-950">
         <div className="text-center">
@@ -30,19 +30,10 @@ export default function AdminRoute({
     );
   }
 
-  if (!user) {
+  if (state !== "allowed") {
     return (
       <Navigate
-        to="/auth"
-        replace
-      />
-    );
-  }
-
-  if (!allowed) {
-    return (
-      <Navigate
-        to="/home"
+        to="/admin/login"
         replace
       />
     );

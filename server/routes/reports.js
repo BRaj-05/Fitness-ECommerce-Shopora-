@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
-const verifyFirebaseToken = require('../middleware/verifyFirebaseToken');
-const verifyAdmin = require('../middleware/verifyAdmin');
+const verifyAdminRequest = require('../middleware/verifyAdminRequest');
 
 /**
  * @route   GET /api/reports/sales
@@ -11,7 +10,7 @@ const verifyAdmin = require('../middleware/verifyAdmin');
  *          revenue breakdown by date, and product performance ranked by revenue
  * @access  Public
  */
-router.get('/sales', verifyFirebaseToken, verifyAdmin, async (req, res) => {
+router.get('/sales', verifyAdminRequest, async (req, res) => {
   try {
     const { range = 'weekly' } = req.query;
 

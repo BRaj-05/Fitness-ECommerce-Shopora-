@@ -1,8 +1,7 @@
 ﻿// src/components/AdminNavbar.jsx
 import { useNavigate } from "react-router-dom";
-import { signOut } from "firebase/auth";
-import { auth } from "../auth/firebase";
 import { useAuth } from "../auth/useAuth";
+import { API_URL } from "../config/app";
 import ThemeToggle from "./ThemeToggle";
 import { BrandMark } from "./BrandLogo";
 
@@ -11,13 +10,12 @@ export default function AdminNavbar({ range, setRange, menuOpen, setMenuOpen }) 
   const { user, loading: authLoading } = useAuth();
 
   const handleSignOut = async () => {
-    if (import.meta.env.MODE === "development") {
-      localStorage.removeItem("dev_token");
-      localStorage.removeItem("dev_admin");
-    }
-    await signOut(auth);
+    await fetch(`${API_URL}/api/admin/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
     setMenuOpen?.(false);
-    navigate("/");
+    navigate("/admin/login", { replace: true });
   };
 
   const ranges = [

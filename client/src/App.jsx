@@ -32,6 +32,8 @@ import DevAdminLogin from "./components/DevAdminLogin";
 import { ThemeProvider } from "./context/ThemeContext";
 import PageTransition from "./components/PageTransition";
 import PaymentInvoice from "./pages/PaymentInvoice";
+import PhotoCredits from "./pages/PhotoCredits";
+import AdminLogin from "./pages/AdminLogin";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,10 +74,13 @@ export default function App() {
 
                 <Route path="/terms" element={<NonAdminRoute><LegalTerms /></NonAdminRoute>} />
                 <Route path="/privacy-policy" element={<NonAdminRoute><LegalPrivacy /></NonAdminRoute>} />
+                <Route path="/credits" element={<PhotoCredits />} />
 
                 {import.meta.env.MODE === "development" && (
                   <Route path="/dev-login" element={<DevAdminLogin />} />
                 )}
+
+                <Route path="/admin/login" element={<AdminLogin />} />
 
                 <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                 <Route path="/admin/reports" element={<AdminRoute><AdminReports /></AdminRoute>} />

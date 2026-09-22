@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fmt } from "../utils/formatters";
+import ProductImage from "../components/ProductImage";
 
 export default function ProductConfirmation() {
   const navigate = useNavigate();
@@ -108,12 +109,7 @@ export default function ProductConfirmation() {
                 className="flex items-center gap-3 px-4 py-4 sm:gap-5 sm:px-7 sm:py-5"
               >
                 <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 sm:h-16 sm:w-16">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="h-full w-full object-cover"
-                    onError={(event) => { event.currentTarget.style.display = "none"; }}
-                  />
+                  <ProductImage product={product} className="h-full w-full" />
                 </div>
 
                 <div className="min-w-0 flex-1">

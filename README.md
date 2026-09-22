@@ -54,6 +54,12 @@ Inventory tracks total stock and reserved stock so customer-facing availability 
 
 `available = stock - reserved`
 
+### Product photography
+
+The seeded Shopora catalog can use curated local product photography sourced through the Pexels API. Photo metadata and source links are stored in `client/public/products/real/manifest.json`, while the original Shopora-generated product artwork remains available as an offline/broken-image fallback.
+
+See `/credits` in the app for photographer/source credits.
+
 - React, Vite, Tailwind CSS
 - Node.js, Express
 - MongoDB, Mongoose

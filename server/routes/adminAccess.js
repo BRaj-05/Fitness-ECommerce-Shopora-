@@ -1,7 +1,7 @@
 const express = require("express");
 
-const verifyFirebaseToken =
-  require("../middleware/verifyFirebaseToken");
+const verifyAdminRequest =
+  require("../middleware/verifyAdminRequest");
 
 const router = express.Router();
 
@@ -21,8 +21,15 @@ function configuredAdminUids() {
 
 router.get(
   "/",
-  verifyFirebaseToken,
+  verifyAdminRequest,
   (req, res) => {
+    if (req.adminSession) {
+      return res.json({
+        allowed: true,
+        role: "admin",
+        user: { email: req.adminSession.email, provider: "admin-session" },
+      });
+    }
     const {
       adminUid,
       superAdminUid,

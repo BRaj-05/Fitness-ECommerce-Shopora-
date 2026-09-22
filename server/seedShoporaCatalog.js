@@ -2,6 +2,9 @@ require("dotenv").config();
 
 const mongoose = require("mongoose");
 const Product = require("./models/Product");
+const {
+  getSeedProductImage,
+} = require("./config/productPhotoMap");
 
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -639,17 +642,24 @@ async function run() {
         : {}),
     });
 
-    const operations = products.map((product) => ({
-      updateOne: {
+    const operations = products.map((product) => {
+      const seededProduct = {
+        ...product,
+        image: getSeedProductImage(product.productId) || product.image,
+      };
+      const { reserved, ...catalogFields } = seededProduct;
+
+      return { updateOne: {
         filter: {
           productId: product.productId,
         },
         update: {
-          $set: product,
+          $set: catalogFields,
+          $setOnInsert: { reserved },
         },
         upsert: true,
-      },
-    }));
+      } };
+    });
 
     const result = await Product.bulkWrite(
       operations,

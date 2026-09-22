@@ -17,6 +17,7 @@ import {
 } from "../utils/formatters";
 
 import ProductVisual from "./ProductVisual";
+import CategoryPhotoRail from "./CategoryPhotoRail";
 
 const CAMPAIGNS = [
   {
@@ -46,7 +47,7 @@ const CAMPAIGNS = [
     copy:
       "Training equipment, nutrition and wearables with live inventory and a checkout flow that stays focused.",
     image:
-      "/campaign/training-flatlay.jpg",
+      "/products/real/resistance-bands-1.jpg",
     position:
       "center 54%",
     cta:
@@ -96,7 +97,7 @@ const COLLECTIONS = [
     copy:
       "Protein powders and bars selected for a simple training routine.",
     image:
-      "/campaign/protein-shake.jpg",
+      "/products/real/protein-powder-1.jpg",
     route:
       "/shop?category=Nutrition",
   },
@@ -109,7 +110,7 @@ const COLLECTIONS = [
     copy:
       "Wearables and practical tools that keep your routine connected.",
     image:
-      "/campaign/wellness-flatlay.jpg",
+      "/products/real/fitness-tracker-1.jpg",
     route:
       "/shop?category=Wearables",
   },
@@ -475,6 +476,8 @@ export default function EditorialCampaignHome() {
         </div>
       </section>
 
+      <CategoryPhotoRail />
+
       <section className="campaign-trust">
         <div className="campaign-shell campaign-trust-grid">
           <article>
@@ -576,17 +579,16 @@ export default function EditorialCampaignHome() {
                       item.route,
                     )
                   }
-                  className={`campaign-collection-card campaign-card-${index + 1}`}
+                  className={`campaign-collection-card campaign-card-${index + 1} group`}
                 >
-                  <CampaignImage
-                    src={
-                      item.image
-                    }
+                  <img
+                    src={item.image}
                     alt=""
-                    className="absolute inset-0"
+                    aria-hidden="true"
+                    className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 motion-reduce:transition-none motion-safe:group-hover:scale-[1.03]"
                   />
 
-                  <div className="campaign-card-overlay" />
+                  <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(4,5,6,0.90)_0%,rgba(4,5,6,0.48)_45%,rgba(4,5,6,0.08)_100%)]" />
 
                   <div className="relative z-10 flex h-full flex-col justify-end p-6 sm:p-7">
                     <p className="campaign-eyebrow text-white/60">

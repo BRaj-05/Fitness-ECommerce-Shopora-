@@ -2,6 +2,7 @@
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import CreatorCredit from "../components/CreatorCredit";
+import ProductImage from "../components/ProductImage";
 import { auth } from "../auth/firebase";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
 import {
@@ -290,11 +291,7 @@ export default function PaymentInvoice() {
                   {invoiceItems.map((item) => (
                     <div key={`${item.productId}-${item.name}`} className="grid gap-3 px-4 py-4 sm:grid-cols-[1fr_90px_120px_130px] sm:items-center sm:px-5">
                       <div className="flex min-w-0 items-center gap-3">
-                        {item.image ? (
-                          <img src={item.image} alt={item.name} className="h-11 w-11 rounded-xl bg-slate-100 object-cover dark:bg-slate-800" />
-                        ) : (
-                          <div className="grid h-11 w-11 place-items-center rounded-xl bg-indigo-50 text-xs font-bold text-indigo-500 dark:bg-indigo-500/10">S</div>
-                        )}
+                        <ProductImage product={item} className="h-11 w-11 rounded-xl bg-slate-100 dark:bg-slate-800" />
                         <div className="min-w-0">
                           <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{item.name}</p>
                           <p className="mt-0.5 text-[10px] text-slate-400">{item.brand}</p>

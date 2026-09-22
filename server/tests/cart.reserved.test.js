@@ -13,7 +13,7 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
 // The function under test — exported from cart.js in Step 5
-const { adjustReserved } = require('../routes/cart');
+const { adjustReserved, releaseReserved } = require('../routes/cart');
 
 // Product model — used to seed and inspect documents in tests
 const Product = require('../models/Product');
@@ -191,6 +191,22 @@ describe('adjustReserved', () => {
     // Verify DB directly
     const fresh = await Product.findOne({ productId: 6 });
     expect(fresh.reserved).toBe(3);
+  });
+
+  test('releaseReserved clamps stale reservation data at zero', async () => {
+    await createProduct({ productId: 12, stock: 10, reserved: 0 });
+
+    const result = await releaseReserved(12, 1);
+
+    expect(result.reserved).toBe(0);
+  });
+
+  test('releaseReserved subtracts the requested quantity when available', async () => {
+    await createProduct({ productId: 13, stock: 10, reserved: 4 });
+
+    const result = await releaseReserved(13, 2);
+
+    expect(result.reserved).toBe(2);
   });
 
 }); // end describe('adjustReserved')

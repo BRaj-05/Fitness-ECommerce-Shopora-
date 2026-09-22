@@ -3,6 +3,7 @@ import {
   OWNER_LINKEDIN,
   OWNER_NAME,
 } from "../config/app";
+import { Link } from "react-router-dom";
 
 function ExternalIcon() {
   return (
@@ -57,6 +58,14 @@ export default function CreatorCredit({ compact = false, className = "" }) {
           >
             GitHub <ExternalIcon />
           </a>
+
+          <a href="https://www.pexels.com/" target="_blank" rel="noreferrer" className="font-medium transition hover:text-indigo-600 dark:hover:text-indigo-400">
+            Photos from Pexels
+          </a>
+
+          <Link to="/credits" className="font-medium transition hover:text-indigo-600 dark:hover:text-indigo-400">
+            Photo credits
+          </Link>
         </>
       )}
     </div>

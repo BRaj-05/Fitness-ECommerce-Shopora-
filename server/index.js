@@ -39,6 +39,9 @@ const OPTIONAL_ENV_VARS = [
   "SMTP_PORT",
   "SMTP_USER",
   "SMTP_PASS",
+  "ADMIN_LOGIN_EMAIL",
+  "ADMIN_LOGIN_PASSWORD",
+  "ADMIN_SESSION_SECRET",
 ];
 
 const missingCritical = CRITICAL_ENV_VARS.filter((v) => !process.env[v]);
@@ -137,6 +140,7 @@ app.use(
   authLimiter,
   require("./routes/auth"),
 );
+app.use("/api/admin/login", authLimiter);
 
 // ── Database ────────────────────────────────────────────────────────────────
 require("./db");
@@ -170,6 +174,7 @@ const dashboardRoutes = require("./routes/dashboard");
 
 // ── API routes (prefixed) ───────────────────────────────────────────────────
 app.use("/api/products", require("./routes/products"));
+app.use("/api/admin", require("./routes/adminSession"));
 app.use(
   "/api/admin/access",
   require("./routes/adminAccess"),

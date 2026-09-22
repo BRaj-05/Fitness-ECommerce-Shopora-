@@ -4,8 +4,7 @@ const multer = require('multer');
 const streamifier = require('streamifier');
 const cloudinary = require('../lib/cloudinary');
 const Bug = require('../models/Bug');
-const verifyFirebaseToken = require('../middleware/verifyFirebaseToken');
-const verifyAdmin = require('../middleware/verifyAdmin');
+const verifyAdminRequest = require('../middleware/verifyAdminRequest');
 const admin = require('../firebaseAdmin');
 
 
@@ -96,7 +95,7 @@ router.post('/', upload.single('screenshot'), async (req, res) => {
 });
 
 // ── GET /api/bugs — admin only ────────────────────────────────────────────
-router.get('/', verifyFirebaseToken, verifyAdmin, async (req, res) => {
+router.get('/', verifyAdminRequest, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
@@ -141,7 +140,7 @@ router.get('/', verifyFirebaseToken, verifyAdmin, async (req, res) => {
 });
 
 // ── PATCH /api/bugs/:id — admin only ─────────────────────────────────────
-router.patch('/:id', verifyFirebaseToken, verifyAdmin, async (req, res) => {
+router.patch('/:id', verifyAdminRequest, async (req, res) => {
   try {
 
     const { status } = req.body;
