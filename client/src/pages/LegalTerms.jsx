@@ -1,12 +1,13 @@
 ﻿import React, { useEffect, useState } from 'react';
 import Navbar from "../components/Navbar";
-import CreatorCredit from "../components/CreatorCredit";
+import SiteFooter from "../components/SiteFooter";
+import { SUPPORT_EMAIL } from "../config/app";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../auth/firebase";
-import { signOut } from "firebase/auth";
+import { useAuth } from "../auth/useAuth";
 
 const TermsAndConditions = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -15,7 +16,7 @@ const TermsAndConditions = () => {
   }, []);
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    await logout();
     navigate("/");
   };
 
@@ -211,8 +212,7 @@ const TermsAndConditions = () => {
                 10. Contact
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                <span className="block mb-1">legal@Shopora.com</span>
-                <span className="block">1-800-Shopora</span>
+                <span className="block">{SUPPORT_EMAIL || "Contact Shopora through the project support channel."}</span>
               </p>
             </div>
           </section>
@@ -230,16 +230,7 @@ const TermsAndConditions = () => {
 
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-stone-200 bg-white mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-10">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <span className="font-heading text-lg text-stone-900">Shopora</span>
-            <CreatorCredit />
-                      <p className="text-xs text-stone-400">© 2026 Shopora. Fitness commerce & tools.</p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 };

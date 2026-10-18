@@ -1,4 +1,5 @@
 import { getAuthHeaders } from "./getAuthHeaders";
+import { apiFetch } from "./apiFetch";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -8,7 +9,7 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 export const getWorkoutLogs = async () => {
   try {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API}/api/workouts`, { headers });
+    const res = await apiFetch(`${API}/api/workouts`, { headers });
     if (!res.ok) throw new Error("Failed to fetch workouts");
     return await res.json();
   } catch (err) {
@@ -37,7 +38,7 @@ export const getWorkoutByDate = async (date) => {
 export const saveWorkout = async (entry) => {
   try {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API}/api/workouts`, {
+    const res = await apiFetch(`${API}/api/workouts`, {
       method: "POST",
       headers,
       body: JSON.stringify(entry),
@@ -46,6 +47,7 @@ export const saveWorkout = async (entry) => {
     return await res.json();
   } catch (err) {
     console.error(err);
+    return null;
   }
 };
 
@@ -55,7 +57,7 @@ export const saveWorkout = async (entry) => {
 export const deleteWorkout = async (date) => {
   try {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API}/api/workouts/${date}`, {
+    const res = await apiFetch(`${API}/api/workouts/${date}`, {
       method: "DELETE",
       headers,
     });
@@ -79,7 +81,14 @@ export const addExerciseToWorkout = async (date, exercise) => {
     return;
   }
 
-  exercises.push(exercise);
+  exercises.push({
+    id: String(exercise.id),
+    name: exercise.name,
+    bodyPart: exercise.bodyPart || "",
+    target: exercise.target || "",
+    equipment: exercise.equipment || "",
+    gifUrl: exercise.gifUrl || null,
+  });
   await saveWorkout({ ...workout, date, exercises });
 };
 
@@ -97,19 +106,31 @@ export const removeExerciseFromWorkout = async (date, exerciseId) => {
 /**
  * Formats data specifically for FullCalendar events list.
  */
-export const getAllWorkoutEvents = async () => {
-  const logs = await getWorkoutLogs();
+export const createWorkoutEvents = (logs = {}) => {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   return Object.keys(logs)
     .filter(date => {
       const log = logs[date];
-      // A workout is "valid" if it has a title, notes, or at least one exercise
       return (log.title && log.title.trim() !== "") ||
              (log.notes && log.notes.trim() !== "") ||
-             (log.exercises && log.exercises.length > 0);
+             (log.exercises && log.exercises.length > 0) ||
+             (log.checklist && log.checklist.length > 0) ||
+             log.checkInAt ||
+             log.checkOutAt;
     })
     .map(date => ({
       title: logs[date].title || 'Logged Workout',
       date: date,
       allDay: true,
+      extendedProps: {
+        status: logs[date].checkOutAt
+          ? 'completed'
+          : logs[date].checkInAt
+            ? date < today ? 'missed' : 'in-progress'
+            : 'logged',
+      },
     }));
 };
+
+export const getAllWorkoutEvents = async () => createWorkoutEvents(await getWorkoutLogs());

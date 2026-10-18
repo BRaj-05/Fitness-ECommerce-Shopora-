@@ -1,5 +1,15 @@
 const mongoose = require("mongoose");
 
+const providerSchema = new mongoose.Schema(
+  {
+    provider: { type: String, enum: ["local", "google", "github"], required: true },
+    providerAccountId: { type: String, required: true },
+    email: { type: String, lowercase: true, trim: true },
+    linkedAt: { type: Date, default: Date.now },
+  },
+  { _id: false },
+);
+
 const authUserSchema = new mongoose.Schema(
   {
     uid: {
@@ -18,8 +28,9 @@ const authUserSchema = new mongoose.Schema(
 
     username: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
+      sparse: true,
       index: true,
       lowercase: true,
       trim: true,
@@ -39,19 +50,28 @@ const authUserSchema = new mongoose.Schema(
     // bcrypt is one-way. Never decrypt this field.
     passwordHash: {
       type: String,
-      required: true,
+      required: false,
       select: false,
     },
 
     provider: {
       type: String,
-      enum: ["local"],
+      enum: ["local", "google", "github"],
       default: "local",
     },
+    providers: { type: [providerSchema], default: [] },
+    avatarUrl: { type: String, default: "" },
+    role: { type: String, enum: ["customer", "admin", "super-admin"], default: "customer" },
+    lastLoginAt: { type: Date },
   },
   {
     timestamps: true,
   },
+);
+
+authUserSchema.index(
+  { "providers.provider": 1, "providers.providerAccountId": 1 },
+  { unique: true, sparse: true },
 );
 
 module.exports = mongoose.model(

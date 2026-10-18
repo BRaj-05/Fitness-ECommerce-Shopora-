@@ -18,14 +18,15 @@ import {
 
 import ProductVisual from "./ProductVisual";
 import CategoryPhotoRail from "./CategoryPhotoRail";
+import ShoporaAmbientBackground from "./ShoporaAmbientBackground";
 
 const CAMPAIGNS = [
   {
     id: "strength",
     eyebrow:
-      "SHOPORA / PERFORMANCE",
+      "SHOPORA / PERFORMANCE COMMERCE",
     title:
-      "Train with intent.",
+      "Train with intent. Live with momentum.",
     copy:
       "Performance essentials, structured fitness tools and a store built around the work you actually do.",
     image:
@@ -120,6 +121,7 @@ function CampaignImage({
   src,
   alt,
   className = "",
+  priority = false,
   position =
     "center",
 }) {
@@ -136,6 +138,9 @@ function CampaignImage({
         <img
           src={src}
           alt={alt}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
+          decoding="async"
           onError={() =>
             setFailed(true)
           }
@@ -371,11 +376,13 @@ export default function EditorialCampaignHome() {
                   ? "campaign-hero-image-active"
                   : ""
               }`}
+              priority={index === 0}
             />
           ),
         )}
 
         <div className="campaign-hero-shade" />
+        <ShoporaAmbientBackground />
 
         <div className="campaign-shell campaign-hero-content">
           <div className="max-w-[710px]">
@@ -439,6 +446,12 @@ export default function EditorialCampaignHome() {
                 Health tools
               </button>
             </div>
+
+            <div className="campaign-hero-facts" aria-label="Shopora catalog facts">
+              <span><strong>40</strong> products</span>
+              <span><strong>8</strong> categories</span>
+              <span><strong>Secure</strong> Razorpay checkout</span>
+            </div>
           </div>
 
           <div className="campaign-hero-progress">
@@ -473,6 +486,7 @@ export default function EditorialCampaignHome() {
               ),
             )}
           </div>
+          <span className="campaign-scroll-cue" aria-hidden="true"><i /> Scroll to explore</span>
         </div>
       </section>
 
@@ -585,6 +599,8 @@ export default function EditorialCampaignHome() {
                     src={item.image}
                     alt=""
                     aria-hidden="true"
+                    loading="lazy"
+                    decoding="async"
                     className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 motion-reduce:transition-none motion-safe:group-hover:scale-[1.03]"
                   />
 

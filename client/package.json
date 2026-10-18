@@ -3,10 +3,11 @@
     "private": true,
     "version": "0.0.0",
     "type": "module",
-  "scripts": {
-    "generate:product-art": "node scripts/generate-product-art.mjs",
+    "scripts": {
+        "generate:product-art": "node scripts/generate-product-art.mjs",
         "dev": "vite",
-        "build": "vite build",
+        "generate:seo": "node scripts/generate-seo.mjs",
+        "build": "npm run generate:seo && vite build",
         "lint": "eslint .",
         "preview": "vite preview"
     },
@@ -14,10 +15,10 @@
         "@fullcalendar/daygrid": "^6.1.21",
         "@fullcalendar/interaction": "^6.1.21",
         "@fullcalendar/react": "^6.1.20",
-        "@tanstack/react-query": "^5.102.8",
         "@tailwindcss/vite": "^4.0.0",
-        "firebase": "^12.18.0",
+        "@tanstack/react-query": "^5.102.8",
         "framer-motion": "^12.42.2",
+        "lucide-react": "^1.47.0",
         "react": "^19.2.8",
         "react-dom": "^19.2.8",
         "react-router-dom": "^7.18.2",

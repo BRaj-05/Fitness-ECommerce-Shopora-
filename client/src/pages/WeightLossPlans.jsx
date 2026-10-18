@@ -2,8 +2,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { signOut } from "firebase/auth";
-import { auth } from "../auth/firebase";
+import SiteFooter from "../components/SiteFooter";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Target, Zap } from "lucide-react";
+import { useAuth } from "../auth/useAuth";
+import { beginFitnessPlan } from "../utils/fitnessPlanTracker";
 
 const PLANS = [
   {
@@ -42,8 +44,10 @@ const PLANS = [
 
 export default function WeightLossPlans() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [visible, setVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [startingPlan, setStartingPlan] = useState("");
 
   useEffect(() => {
     document.title = "Weight Loss Plans — Shopora";
@@ -55,12 +59,19 @@ export default function WeightLossPlans() {
   }, []);
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    await logout();
     navigate("/");
   };
 
+  const handleStartPlan = async (plan) => {
+    if (startingPlan) return;
+    setStartingPlan(plan.name);
+    const activePlan = await beginFitnessPlan(plan, "Weight Loss", Boolean(user));
+    navigate("/tracker", { state: { activePlan } });
+  };
+
   return (
-    <div className="min-h-screen bg-stone-50 font-sans">
+    <div className="shopora-plan-page min-h-screen bg-stone-50 font-sans">
       <style>{`
         
         .fade-in { opacity:0; transform:translateY(16px); transition:opacity .5s ease,transform .5s ease; }
@@ -80,8 +91,8 @@ export default function WeightLossPlans() {
       />
 
       {/* ── Hero ── */}
-      <section className="bg-stone-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-12 sm:py-16 md:py-20">
+      <section className="shopora-plan-hero shopora-plan-hero--weight bg-stone-900 text-white">
+        <div className="shopora-wide-shell shopora-plan-hero-inner py-12 sm:py-16 md:py-20">
           <div className={`fade-in d1 ${visible ? "show" : ""}`}>
             {/* Stack on mobile, row on sm+ */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-5 sm:gap-8">
@@ -106,7 +117,7 @@ export default function WeightLossPlans() {
                            hover:text-stone-200 transition-colors inline-flex items-center
                            gap-2 self-start sm:self-auto min-h-11"
               >
-                ← Back to Home
+                <ArrowLeft size={15} /> Back to Home
               </button>
             </div>
           </div>
@@ -114,7 +125,7 @@ export default function WeightLossPlans() {
       </section>
 
       {/* ── Plans Grid ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-12 sm:py-16 space-y-12 sm:space-y-16">
+      <div className="shopora-wide-shell shopora-plan-content space-y-12 py-12 sm:space-y-16 sm:py-16">
 
         {/* Available programs */}
         <section>
@@ -128,11 +139,11 @@ export default function WeightLossPlans() {
           </div>
 
           {/* Single col on mobile, 2-col on md+ */}
-          <div className={`fade-in d2 ${visible ? "show" : ""} grid sm:grid-cols-2 gap-4 sm:gap-5`}>
+          <div className={`fade-in d2 ${visible ? "show" : ""} shopora-program-grid`}>
             {PLANS.map((plan, i) => (
               <div
                 key={i}
-                className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-7
+                className="shopora-program-card lux-admin-card p-5 sm:p-7
                            flex flex-col gap-4 transition-all duration-300
                            hover:shadow-lg hover:border-stone-300"
               >
@@ -163,16 +174,13 @@ export default function WeightLossPlans() {
                 <ul className="space-y-2">
                   {plan.features.map((f, j) => (
                     <li key={j} className="text-xs flex items-center gap-2 text-stone-500">
-                      <span className="text-stone-900 shrink-0">✓</span> {f}
+                      <Check size={14} className="shrink-0 text-[var(--lux-mint)]" /> {f}
                     </li>
                   ))}
                 </ul>
 
-                <button className="text-sm py-3 rounded-full transition-all mt-2 border
-                                   border-stone-300 text-stone-700 hover:bg-stone-900
-                                   hover:text-white hover:border-stone-900 min-h-11
-                                   active:scale-[0.98]">
-                  Start Plan →
+                <button type="button" onClick={() => handleStartPlan(plan)} disabled={Boolean(startingPlan)} className="fitness-plan-action">
+                  {startingPlan === plan.name ? "Starting plan..." : <>Start Plan <ArrowRight size={15} className="ml-2 inline" /></>}
                 </button>
               </div>
             ))}
@@ -188,26 +196,26 @@ export default function WeightLossPlans() {
               The science behind the plan
             </h2>
             {/* Single col on mobile, 3-col on md+ */}
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
+            <div className="shopora-method-grid grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
               {[
                 {
-                  icon: "◎",
+                  Icon: Target,
                   title: "Caloric Deficit",
                   desc: "Precisely calculated energy balance tailored to your body composition and activity level.",
                 },
                 {
-                  icon: "⚡",
+                  Icon: Zap,
                   title: "Metabolic Adaptation",
                   desc: "Strategic re-feeds and diet breaks prevent metabolic slowdown during extended cuts.",
                 },
                 {
-                  icon: "✓",
+                  Icon: CheckCircle2,
                   title: "Sustainable Habits",
                   desc: "No crash diets — build lasting nutritional habits that keep the weight off for good.",
                 },
               ].map((tip, i) => (
-                <div key={i} className="bg-stone-100 rounded-2xl p-5 sm:p-7">
-                  <span className="text-2xl mb-4 block">{tip.icon}</span>
+                <div key={i} className="shopora-method-card lux-admin-card p-5 sm:p-7">
+                  <tip.Icon className="mb-4 text-[var(--lux-orange)]" size={22} />
                   <h3 className="font-heading text-lg text-stone-900 mb-2">
                     {tip.title}
                   </h3>
@@ -219,23 +227,7 @@ export default function WeightLossPlans() {
         </section>
       </div>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-stone-200 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-6 sm:py-8
-                        flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
-          <span className="font-heading text-lg text-stone-900">Shopora</span>
-          <p className="text-xs text-stone-400">© 2026 Shopora. Fitness commerce & tools.</p>
-          <div className="flex gap-4 sm:gap-5">
-            {["Privacy", "Terms", "Support"].map(l => (
-              <button key={l}
-                className="text-xs text-stone-400 hover:text-stone-600 transition-colors
-                           min-h-11 flex items-center">
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

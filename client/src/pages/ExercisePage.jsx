@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { addExerciseToWorkout, getWorkoutByDate } from "../utils/workoutStorage";
+import { addExerciseToWorkout } from "../utils/workoutStorage";
+import ShoporaLoader from "../components/ShoporaLoader";
+import SiteFooter from "../components/SiteFooter";
+import { AlertTriangle, ArrowLeft, CalendarDays, Dumbbell, Layers3, Search } from "lucide-react";
 
 const CATEGORIES = [
   { id: "chest", name: "Chest" },
@@ -29,6 +32,26 @@ export default function ExercisePage() {
   const [error, setError] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [imageErrors, setImageErrors] = useState(new Set());
+  const [query, setQuery] = useState("");
+  const requestIdRef = useRef(0);
+
+  const filteredExercises = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return exercises;
+    return exercises.filter((exercise) => [exercise.name, exercise.target, exercise.equipment, exercise.bodyPart]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(normalized));
+  }, [exercises, query]);
+  const activeCategory = CATEGORIES.find((category) => category.id === selectedCategory);
+  const selectedDateLabel = selectedDate
+    ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    })
+    : "No day selected";
 
   // Get selected date from localStorage on mount
   useEffect(() => {
@@ -44,6 +67,7 @@ export default function ExercisePage() {
   }, [selectedCategory]);
 
   const fetchExercises = async (bodyPart) => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError("");
     setExercises([]);
@@ -59,26 +83,16 @@ export default function ExercisePage() {
       }
 
       const data = await response.json();
-
-      // Client-side debug logging
-      if (data && data.length > 0) {
-        const firstEx = data[0];
-        console.log(`\n[Exercise Client] Received ${data.length} exercises for "${bodyPart}"`);
-        console.log("  First exercise name:", firstEx.name);
-        console.log("  First exercise gifUrl:", firstEx.gifUrl ? `✅ Present` : "❌ null");
-        console.log("  First exercise imageUrl:", firstEx.imageUrl ? `✅ Present` : "❌ null");
-        if (firstEx.gifUrl) {
-          console.log("  GIF URL preview:", firstEx.gifUrl.substring(0, 100));
-        }
-        console.log("");
+      if (!Array.isArray(data)) {
+        throw new Error("Exercise library returned an invalid response.");
       }
-
-      setExercises(data || []);
+      if (requestId === requestIdRef.current) setExercises(data);
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setError(err.message || "Failed to load exercises. Please try again.");
       console.error("Exercise fetch error:", err);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   };
 
@@ -106,66 +120,94 @@ export default function ExercisePage() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 font-sans">
+    <div className="min-h-screen bg-[var(--lux-bg)] font-sans text-[var(--lux-ink)]">
       <Navbar variant="product" />
 
-      <main className="max-w-7xl mx-auto px-5 lg:px-10 py-12 sm:py-16">
+      <main className="shopora-wide-shell exercise-page-shell py-10 sm:py-14 lg:py-16">
         {/* Back Button */}
         <button
           onClick={handleBack}
-          className="text-xs tracking-[0.2em] uppercase text-stone-400 hover:text-stone-900 transition-colors mb-12 flex items-center gap-2 group"
+          className="mb-10 flex min-h-11 items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-[var(--lux-muted)] transition-colors hover:text-[var(--lux-ink)]"
         >
-          <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Workout
+          <ArrowLeft size={15} /> Back to workout
         </button>
 
-        <header className="mb-12 text-center md:text-left">
-          <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-2 font-medium">Exercise library</p>
-          <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl text-stone-900 leading-tight">
-            Choose Your Exercise
-          </h1>
+        <header className="exercise-library-hero">
+          <div className="exercise-library-copy">
+            <p className="lux-eyebrow">EXERCISE LIBRARY</p>
+            <h1 className="mt-3 font-heading text-4xl font-extrabold leading-tight md:text-5xl lg:text-6xl">Choose your movement.</h1>
+            <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--lux-muted)]">Filter by body area, inspect equipment and add the right exercise to your selected training day.</p>
+          </div>
+          <div className="exercise-library-utility">
+            <div className="exercise-library-stats" aria-label="Exercise library summary">
+              <div><strong>{String(filteredExercises.length).padStart(2, "0")}</strong><span>Movements</span></div>
+              <div><strong>{String(CATEGORIES.findIndex((category) => category.id === selectedCategory) + 1).padStart(2, "0")}</strong><span>Focus index</span></div>
+              <div><strong>{selectedDate ? "Ready" : "Plan"}</strong><span>{selectedDateLabel}</span></div>
+            </div>
+            <label className="relative block">
+              <span className="sr-only">Search exercises</span>
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--lux-muted)]" size={18} />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search movement, target or equipment" className="h-12 w-full rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] pl-12 pr-4 text-sm outline-none focus:border-[var(--lux-violet)]" />
+            </label>
+          </div>
         </header>
 
-        {/* Category Filter */}
-        <section className="mb-12">
-          <div className="flex flex-wrap gap-2 sm:gap-3 justify-center md:justify-start">
+        <div className="exercise-catalog-layout">
+          <aside className="exercise-category-panel" aria-label="Exercise focus">
+            <div className="exercise-category-heading">
+              <p className="lux-eyebrow">TRAINING FOCUS</p>
+              <Layers3 size={18} aria-hidden="true" />
+            </div>
+            <div className="exercise-category-list">
             {sortedCategories.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`text-xs px-6 py-3 rounded-full transition-all duration-300 font-medium tracking-wide
+                aria-pressed={selectedCategory === cat.id}
+                className={`exercise-category-button
                   ${selectedCategory === cat.id
-                    ? "bg-stone-900 text-white shadow-lg shadow-stone-200"
-                    : "bg-white border border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900"
+                    ? "exercise-category-button-active"
+                    : ""
                   }`}
               >
-                {cat.name}
+                <span>{cat.name}</span>
+                <span>{String(CATEGORIES.findIndex((category) => category.id === cat.id) + 1).padStart(2, "0")}</span>
               </button>
             ))}
-          </div>
-        </section>
+            </div>
+            <div className="exercise-date-note">
+              <CalendarDays size={17} aria-hidden="true" />
+              <div><span>Training day</span><strong>{selectedDateLabel}</strong></div>
+            </div>
+          </aside>
+
+          <div className="min-w-0">
+            <div className="exercise-results-heading">
+              <div>
+                <p className="lux-eyebrow">CURRENT COLLECTION</p>
+                <h2>{activeCategory?.name || "Exercises"}</h2>
+              </div>
+              <p>{filteredExercises.length} curated movements</p>
+            </div>
 
         {/* Exercises Grid */}
         {loading && (
-          <section className="min-h-100 border-2 border-dashed border-stone-200 rounded-3xl flex items-center justify-center bg-white/50">
-            <div className="text-center p-8">
-              <div className="inline-block w-12 h-12 border-2 border-stone-200 border-t-stone-900 rounded-full animate-spin mb-4"></div>
-              <p className="text-stone-400 text-sm font-medium uppercase tracking-widest">
-                Loading exercises...
-              </p>
-            </div>
+          <section className="exercise-grid" aria-label="Loading exercises">
+            {Array.from({ length: 6 }, (_, index) => <div key={index} className="shopora-skeleton aspect-[4/5] rounded-2xl" />)}
+            <ShoporaLoader label="Loading exercises" className="sr-only" />
           </section>
         )}
 
         {error && (
-          <section className="min-h-100 border-2 border-dashed border-stone-300 rounded-3xl flex items-center justify-center bg-stone-50">
+          <section className="flex min-h-72 items-center justify-center rounded-2xl border border-dashed border-[var(--lux-line)] bg-[var(--lux-surface)]">
             <div className="text-center p-8">
-              <p className="text-3xl mb-4">⚠️</p>
-              <p className="text-stone-700 text-sm font-medium uppercase tracking-widest">
+              <AlertTriangle className="mx-auto mb-4 text-[var(--lux-orange)]" size={32} />
+              <p className="text-sm font-bold text-[var(--lux-ink)]">
                 {error}
               </p>
               <button
                 onClick={() => fetchExercises(selectedCategory)}
-                className="mt-6 text-xs px-6 py-2 rounded-full bg-stone-900 text-white hover:bg-stone-700 transition-colors font-medium"
+                className="shopora-btn shopora-btn-primary mt-6"
               >
                 Try Again
               </button>
@@ -174,39 +216,62 @@ export default function ExercisePage() {
         )}
 
         {!loading && !error && exercises.length === 0 && (
-          <section className="min-h-100 border-2 border-dashed border-stone-200 rounded-3xl flex items-center justify-center bg-white/50">
+          <section className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-[var(--lux-line)] bg-[var(--lux-surface)]">
             <div className="text-center p-8">
-              <p className="text-3xl mb-4">∅</p>
-              <p className="text-stone-400 text-sm font-medium uppercase tracking-widest">
+              <Dumbbell className="mx-auto mb-4 text-[var(--lux-muted)]" size={32} />
+              <p className="text-sm font-bold text-[var(--lux-ink)]">
                 No exercises found
               </p>
-              <p className="text-stone-300 text-xs mt-2">Try selecting a different category.</p>
+              <p className="mt-2 text-xs text-[var(--lux-muted)]">Try selecting a different category.</p>
             </div>
           </section>
         )}
 
-        {!loading && !error && exercises.length > 0 && (
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-            {exercises.map((exercise) => (
+        {!loading && !error && exercises.length > 0 && filteredExercises.length === 0 && (
+          <section className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-[var(--lux-line)] bg-[var(--lux-surface)]">
+            <div className="p-8 text-center">
+              <Search className="mx-auto mb-4 text-[var(--lux-muted)]" size={30} />
+              <h2 className="font-heading text-xl font-extrabold">No matching movements</h2>
+              <p className="mt-2 text-sm text-[var(--lux-muted)]">Try a muscle, movement or equipment name.</p>
+              <button type="button" onClick={() => setQuery("")} className="shopora-btn shopora-btn-secondary mt-5">Clear search</button>
+            </div>
+          </section>
+        )}
+
+        {!loading && !error && filteredExercises.length > 0 && (
+          <section className="exercise-grid">
+            {filteredExercises.map((exercise, index) => (
               <div
                 key={exercise.id}
-                className="bg-white border border-stone-200 rounded-2xl overflow-hidden hover:border-stone-900 hover:shadow-lg transition-all duration-300 group flex flex-col"
+                className={`lux-product-card exercise-card group flex flex-col overflow-hidden ${index === 0 ? "exercise-card-featured" : ""}`}
               >
                 {/* Exercise Media Container */}
-                <div className="w-full bg-stone-100 overflow-hidden aspect-square flex items-center justify-center">
-                  {exercise.gifUrl && exercise.gifUrl.trim() !== "" && !imageErrors.has(exercise.id) ? (
-                    <img
-                      src={exercise.gifUrl}
-                      alt={exercise.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={() => handleImageError(exercise.id)}
-                    />
+                <div className="exercise-card-media relative flex w-full items-center justify-center overflow-hidden bg-[var(--lux-soft)]">
+                  {(exercise.imageUrl || exercise.gifUrl)?.trim() && !imageErrors.has(exercise.id) ? (
+                    <>
+                      {exercise.imageFit === "contain" && (
+                        <div
+                          aria-hidden="true"
+                          className="absolute inset-[-12px] scale-110 bg-cover bg-center opacity-20 blur-xl"
+                          style={{ backgroundImage: `url(${exercise.imageUrl || exercise.gifUrl})` }}
+                        />
+                      )}
+                      <img
+                        src={exercise.imageUrl || exercise.gifUrl}
+                        alt={`${exercise.name} exercise demonstration`}
+                        loading="lazy"
+                        decoding="async"
+                        style={{ objectPosition: exercise.imagePosition || "center" }}
+                        className={`relative h-full w-full transition-transform duration-500 group-hover:scale-[1.025] motion-reduce:transform-none motion-reduce:transition-none ${exercise.imageFit === "contain" ? "object-contain" : "object-cover"}`}
+                        onError={() => handleImageError(exercise.id)}
+                      />
+                    </>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-stone-100 group-hover:bg-stone-200 transition-colors">
+                    <div className="flex h-full w-full items-center justify-center bg-[var(--lux-soft)] transition-colors">
                       <div className="text-center">
-                        <p className="text-stone-400 text-2xl mb-2">🏋️</p>
-                        <p className="text-stone-400 text-xs uppercase tracking-wide font-medium">
-                          Exercise illustration
+                        <Dumbbell className="mx-auto mb-3 text-[var(--lux-muted)]" size={30} />
+                        <p className="text-xs font-bold text-[var(--lux-muted)]">
+                          {exercise.bodyPart || selectedCategory} movement
                         </p>
                       </div>
                     </div>
@@ -214,44 +279,47 @@ export default function ExercisePage() {
                 </div>
 
                 {/* Exercise Details */}
-                <div className="p-5 md:p-6 flex flex-col grow">
-                  <h3 className="font-heading text-lg md:text-xl text-stone-900 mb-2 capitalize line-clamp-2">
+                <div className="exercise-card-body p-5 md:p-6 flex flex-col grow">
+                  <h3 className="mb-2 line-clamp-2 font-heading text-lg font-extrabold capitalize text-[var(--lux-ink)] md:text-xl">
                     {exercise.name}
                   </h3>
 
-                  <div className="space-y-2 mb-5 text-xs text-stone-500 grow">
+                  <div className="mb-5 grow space-y-2 text-xs text-[var(--lux-muted)]">
                     {exercise.target && (
                       <p>
                         <span className="uppercase tracking-wide">Target:</span>{" "}
-                        <span className="text-stone-700 capitalize">{exercise.target}</span>
+                        <span className="capitalize text-[var(--lux-ink)]">{exercise.target}</span>
                       </p>
                     )}
                     {exercise.equipment && (
                       <p>
                         <span className="uppercase tracking-wide">Equipment:</span>{" "}
-                        <span className="text-stone-700 capitalize">{exercise.equipment}</span>
+                        <span className="capitalize text-[var(--lux-ink)]">{exercise.equipment}</span>
                       </p>
                     )}
                     {exercise.bodyPart && (
                       <p>
                         <span className="uppercase tracking-wide">Body Part:</span>{" "}
-                        <span className="text-stone-700 capitalize">{exercise.bodyPart}</span>
+                        <span className="capitalize text-[var(--lux-ink)]">{exercise.bodyPart}</span>
                       </p>
                     )}
                   </div>
 
                   <button
                     onClick={() => handleExerciseSelect(exercise)}
-                    className="w-full bg-stone-900 text-white text-xs py-3 rounded-full hover:bg-stone-700 transition-all font-medium active:scale-95"
+                    className="shopora-btn shopora-btn-primary w-full"
                   >
-                    Add to Workout →
+                    Add to workout
                   </button>
                 </div>
               </div>
             ))}
           </section>
         )}
+          </div>
+        </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

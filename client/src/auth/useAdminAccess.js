@@ -12,7 +12,7 @@ export function useAdminAccess() {
 
   const [state, setState] =
     useState({
-      checking: Boolean(user),
+      checking: true,
       allowed: false,
       role: null,
       details: null,
@@ -20,19 +20,6 @@ export function useAdminAccess() {
 
   useEffect(() => {
     let active = true;
-
-    if (!user) {
-      setState({
-        checking: false,
-        allowed: false,
-        role: null,
-        details: null,
-      });
-
-      return () => {
-        active = false;
-      };
-    }
 
     const check = async () => {
       setState((current) => ({
@@ -96,7 +83,7 @@ export function useAdminAccess() {
     return () => {
       active = false;
     };
-  }, [user?.uid]);
+  }, [user]);
 
   return state;
 }

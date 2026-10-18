@@ -1,6 +1,7 @@
 import {
   useNavigate,
 } from "react-router-dom";
+import ShoporaAmbientBackground from "./ShoporaAmbientBackground";
 
 export default function MemberCampaignHero({
   firstName = "there",
@@ -15,10 +16,14 @@ export default function MemberCampaignHero({
         src="/campaign/hero-dark-gym.jpg"
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-cover object-center"
+        loading="eager"
+        fetchPriority="high"
+        className="shopora-image-reveal absolute inset-0 h-full w-full object-cover object-center"
       />
 
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,6,8,.94)_0%,rgba(5,6,8,.77)_44%,rgba(5,6,8,.18)_100%)]" />
+      <ShoporaAmbientBackground />
+      <div className="shopora-halftone" />
 
       <div className="campaign-shell relative z-10 flex min-h-[360px] items-end py-10 sm:py-12">
         <div className="max-w-2xl">
@@ -26,7 +31,7 @@ export default function MemberCampaignHero({
             MEMBER WORKSPACE
           </p>
 
-          <h1 className="mt-3 font-heading text-4xl font-extrabold tracking-[-0.045em] text-white sm:text-5xl">
+          <h1 className="mt-3 font-heading text-4xl font-extrabold tracking-normal text-white sm:text-5xl">
             Welcome back,
             {" "}
             {firstName}.

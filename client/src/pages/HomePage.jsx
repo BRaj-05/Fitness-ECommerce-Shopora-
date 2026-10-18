@@ -1,8 +1,7 @@
 ﻿import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { signOut } from "firebase/auth";
-import { auth } from "../auth/firebase";
+import { useAuth } from "../auth/useAuth";
 import CartDrawer from "../components/CartDrawer";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
 import WelcomeBanner from "../components/WelcomeBanner";
@@ -12,10 +11,9 @@ import CalorieCalculator from "../components/CalorieCalculator";
 import NearbyFitnessCenters from "../components/NearbyFitnessCenters";
 import useInfiniteProducts from "../hooks/useInfiniteProducts";
 import MembershipSection from "../components/MembershipSection";
-import CreatorCredit from "../components/CreatorCredit";
 import FeaturedProducts from "../components/FeaturedProducts";
 import MemberCampaignHero from "../components/MemberCampaignHero";
-import { REPOSITORY_URL } from "../config/app";
+import SiteFooter from "../components/SiteFooter";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -60,7 +58,8 @@ function mapCart(cartDoc, products) {
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const location = useLocation();
+  const { user, loading: authLoading, logout } = useAuth();
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -74,24 +73,25 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!window.location.hash) return;
+    if (!location.hash) return;
 
-    const id = window.location.hash.slice(1);
+    const id = location.hash.slice(1);
     const timer = setTimeout(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-    }, 150);
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.getElementById(id)?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    }, 80);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [location.hash]);
 
   useEffect(() => {
-    setTimeout(() => setVisible(true), 80);
-    const unsub = auth.onAuthStateChanged((u) => {
-      setUser(u);
-      if (!u) navigate("/auth");
-    });
-    return () => unsub();
-  }, [navigate]);
+    const timer = setTimeout(() => setVisible(true), 80);
+    if (!authLoading && !user) navigate("/auth");
+    return () => clearTimeout(timer);
+  }, [authLoading, navigate, user]);
 
   const {
     data: pagesData,
@@ -127,7 +127,7 @@ export default function HomePage() {
   }, [user, products]);
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    await logout();
     navigate("/");
   };
 
@@ -196,7 +196,7 @@ export default function HomePage() {
   }, [products]);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen bg-[var(--lux-bg)] font-sans text-[var(--lux-ink)]">
       {jsonLd && (
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       )}
@@ -228,27 +228,30 @@ export default function HomePage() {
         cartCount={cartCount}
       />
 
-      <div className="mx-auto max-w-7xl space-y-12 px-4 py-8 sm:px-6 sm:py-10 lg:px-10">
+      <div className="shopora-wide-shell home-content-shell space-y-14 py-8 sm:py-10">
         <FeaturedProducts />
 
-        <div className="lux-home-pair grid gap-8 xl:grid-cols-2">
-          <section id="plans" className="scroll-mt-24">
-            <div className="mb-7">
-              <p className="lux-eyebrow">DIGITAL COACHING</p>
-              <h2 className="mt-2 font-heading text-3xl font-extrabold">Fitness plans</h2>
+        <div className="space-y-14">
+          <section id="plans" className="home-plan-showcase scroll-mt-24">
+            <div className="home-section-heading">
+              <div>
+                <p className="lux-eyebrow">DIGITAL COACHING</p>
+                <h2 className="mt-2 font-heading text-3xl font-extrabold md:text-4xl">Programs built around outcomes.</h2>
+              </div>
+              <p>Three focused paths. Clear weekly structure. Progress that stays visible.</p>
             </div>
-            <div className="grid gap-4">
-              {PLANS.map((plan) => (
-                <article key={plan.name} className="lux-admin-card p-5">
+            <div className="home-plan-grid">
+              {PLANS.map((plan, index) => (
+                <article key={plan.name} className={`home-plan-card home-plan-card-${index + 1}`}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="lux-eyebrow">{plan.duration}</p>
-                      <h3 className="mt-2 font-heading text-xl font-extrabold">{plan.name}</h3>
+                      <h3 className="mt-2 font-heading text-xl font-extrabold md:text-2xl">{plan.name}</h3>
                       <p className="mt-2 text-sm leading-6 text-[var(--lux-muted)]">{plan.desc}</p>
                     </div>
-                    <span className={`mt-1 block h-2 w-12 rounded-full ${plan.accent}`} />
+                    <span className="home-plan-index">0{index + 1}</span>
                   </div>
-                  <button type="button" onClick={() => navigate(plan.route)} className="mt-4 text-xs font-bold text-[var(--lux-orange)]">
+                  <button type="button" onClick={() => navigate(plan.route)} className="home-plan-link">
                     View plan →
                   </button>
                 </article>
@@ -259,28 +262,29 @@ export default function HomePage() {
           <MembershipSection user={user} />
         </div>
 
-        <div className="grid gap-8 xl:grid-cols-[1.35fr_.65fr]">
-          <section id="health-tools" className="scroll-mt-24 space-y-8">
+        <section id="health-tools" className="home-health-lab scroll-mt-24 space-y-10">
+          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
             <div>
               <p className="lux-eyebrow">HEALTH TOOLS</p>
               <h2 className="mt-2 font-heading text-3xl font-extrabold">Know your baseline.</h2>
             </div>
-            <BMICalculator />
-            <CalorieCalculator />
-          </section>
-
-          <section id="tracking" className="lux-admin-hero scroll-mt-24 self-start text-white">
-            <div>
-              <p className="lux-eyebrow text-white/45">PERSONAL PROGRESS</p>
-              <h2 className="mt-3 font-heading text-3xl font-extrabold">Training history, kept focused.</h2>
-              <button type="button" onClick={() => navigate("/tracker")} className="lux-primary-light mt-7">
+            <div id="tracking" className="health-tracker-cta scroll-mt-24">
+              <div>
+                <p className="lux-eyebrow">PERSONAL PROGRESS</p>
+                <h3 className="mt-2 font-heading text-xl font-extrabold">Training history, kept focused.</h3>
+              </div>
+              <button type="button" onClick={() => navigate("/tracker")} className="lux-primary-light shrink-0">
                 Open tracker
               </button>
             </div>
-          </section>
-        </div>
+          </div>
+          <div className="health-tool-grid">
+            <BMICalculator />
+            <CalorieCalculator />
+          </div>
+        </section>
 
-        <section className="border-y border-[var(--lux-line)] py-9">
+        <section className="home-rewards-band border-y border-[var(--lux-line)] py-9">
           <p className="lux-eyebrow">LOYALTY PROGRAM</p>
           <div className="mt-3 flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
@@ -294,18 +298,7 @@ export default function HomePage() {
         <NearbyFitnessCenters visible={visible} />
       </div>
 
-      <footer className="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 sm:px-6 md:flex-row lg:px-10">
-          <span className="font-heading text-lg font-extrabold text-slate-950 dark:text-white">Shopora</span>
-          <CreatorCredit />
-                    <p className="text-center text-xs text-slate-400">© 2026 Shopora. Fitness commerce & tools.</p>
-          <div className="flex gap-5">
-            <button onClick={() => navigate("/privacy-policy")} className="text-xs text-slate-400 transition-colors hover:text-indigo-600">Privacy</button>
-            <button onClick={() => navigate("/terms")} className="text-xs text-slate-400 transition-colors hover:text-indigo-600">Terms</button>
-            <a href={REPOSITORY_URL} target="_blank" rel="noreferrer" className="text-xs text-slate-400 transition-colors hover:text-indigo-600">GitHub</a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
 
       <CartDrawer
         isOpen={cartOpen}

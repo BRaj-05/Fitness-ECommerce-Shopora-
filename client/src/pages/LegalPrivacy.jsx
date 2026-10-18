@@ -1,25 +1,23 @@
 ﻿import React, { useEffect } from 'react';
 import Navbar from "../components/Navbar";
-import CreatorCredit from "../components/CreatorCredit";
+import SiteFooter from "../components/SiteFooter";
+import { SUPPORT_EMAIL } from "../config/app";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../auth/firebase";
-import { signOut } from "firebase/auth";
+import { useAuth } from "../auth/useAuth";
 import { useState } from "react";
 
 const PrivacyPolicy = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     // Scroll to top on mount
     window.scrollTo(0, 0);
-    const unsub = auth.onAuthStateChanged(u => setUser(u));
-    return () => unsub();
   }, []);
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    await logout();
     navigate("/");
   };
 
@@ -285,19 +283,15 @@ const PrivacyPolicy = () => {
               <div className="bg-white border border-stone-200 rounded-lg p-6 space-y-4">
                 <div>
                   <p className="text-xs text-stone-400 uppercase tracking-wider font-semibold mb-2">Email</p>
-                  <p className="text-base text-stone-900 font-medium">privacy@Shopora.com</p>
+                  <p className="text-base text-stone-900 font-medium">{SUPPORT_EMAIL || "Project support channel"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-stone-400 uppercase tracking-wider font-semibold mb-2">Phone</p>
-                  <p className="text-base text-stone-900 font-medium">1-800-Shopora (Option 3)</p>
+                  <p className="text-base text-stone-900 font-medium">Not published</p>
                 </div>
                 <div>
                   <p className="text-xs text-stone-400 uppercase tracking-wider font-semibold mb-2">Mailing Address</p>
-                  <p className="text-base text-stone-900 font-medium">
-                    Privacy Compliance Officer<br />
-                    123 Fitness Avenue<br />
-                    India
-                  </p>
+                  <p className="text-base text-stone-900 font-medium">Not published</p>
                 </div>
               </div>
             </div>
@@ -316,16 +310,7 @@ const PrivacyPolicy = () => {
 
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-stone-200 bg-white mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-10">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <span className="font-heading text-lg text-stone-900">Shopora</span>
-            <CreatorCredit />
-                      <p className="text-xs text-stone-400">© 2026 Shopora. Fitness commerce & tools.</p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 };

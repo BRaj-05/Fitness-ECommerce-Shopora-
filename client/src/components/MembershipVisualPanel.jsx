@@ -1,11 +1,13 @@
 import { useNavigate } from "react-router-dom";
+import ShoporaAmbientBackground from "./ShoporaAmbientBackground";
 
 export default function MembershipVisualPanel({ currentTier = "starter" }) {
   const navigate = useNavigate();
   return (
     <aside className="membership-visual">
-      <img src="/campaign/premium-gym.jpg" alt="" aria-hidden="true" className="membership-visual-image" />
+      <img src="/campaign/premium-gym.jpg" alt="" aria-hidden="true" loading="lazy" className="membership-visual-image" />
       <div className="membership-visual-overlay" />
+      <ShoporaAmbientBackground />
       <div className="membership-visual-content">
         <p className="membership-visual-eyebrow">SHOPORA MEMBERSHIP</p>
         <h2>Make every<br />session count.</h2>

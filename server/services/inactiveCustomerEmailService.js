@@ -1,6 +1,7 @@
 // server/services/inactiveCustomerEmailService.js
 const Order = require("../models/Order");
 const UserProfile = require("../models/UserProfile");
+const AuthUser = require("../models/AuthUser");
 const admin = require("../firebaseAdmin");
 const { sendEmail } = require("./emailService");
 const { generateInactivityReminderEmail } = require("./emailTemplates");
@@ -53,6 +54,11 @@ async function resolveCustomerEmail(userId, existingProfile = null) {
         email: existingProfile.email,
         displayName: existingProfile.name || null,
       };
+    }
+
+    const account = await AuthUser.findOne({ uid: userId }).lean();
+    if (account?.email) {
+      return { email: account.email, displayName: account.name || null };
     }
 
     const firebaseUser = await admin.auth().getUser(userId);

@@ -11,7 +11,12 @@ export default function AdminRoute({
     let active = true;
     fetch(`${API_URL}/api/admin/session`, { credentials: "include" })
       .then((response) => response.json())
-      .then((data) => { if (active) setState(data.authenticated ? "allowed" : "denied"); })
+      .then(async (data) => {
+        if (data.authenticated) return true;
+        const access = await fetch(`${API_URL}/api/admin/access`, { credentials: "include" });
+        return access.ok;
+      })
+      .then((allowed) => { if (active) setState(allowed ? "allowed" : "denied"); })
       .catch(() => { if (active) setState("denied"); });
     return () => { active = false; };
   }, []);
@@ -39,5 +44,5 @@ export default function AdminRoute({
     );
   }
 
-  return children;
+  return <div className="admin-operations-shell">{children}</div>;
 }

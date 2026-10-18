@@ -5,7 +5,7 @@ const streamifier = require('streamifier');
 const cloudinary = require('../lib/cloudinary');
 const Bug = require('../models/Bug');
 const verifyAdminRequest = require('../middleware/verifyAdminRequest');
-const admin = require('../firebaseAdmin');
+const { optionalAuth } = require('../middleware/requireAuth');
 
 
 
@@ -21,7 +21,7 @@ const upload = multer({
 });
 
 // ── POST /api/bugs — public, accepts optional screenshot ──────────────────
-router.post('/', upload.single('screenshot'), async (req, res) => {
+router.post('/', optionalAuth, upload.single('screenshot'), async (req, res) => {
   try {
     const { title, description, steps, pageUrl, browser } = req.body;
     let { reporterName, reporterEmail } = req.body;
@@ -34,16 +34,9 @@ router.post('/', upload.single('screenshot'), async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
     // Prefer authenticated name/email from token if present
-    try {
-      const authHeader = req.headers.authorization;
-      if (authHeader?.startsWith('Bearer ')) {
-        const token = authHeader.split('Bearer ')[1];
-        const decoded = await admin.auth().verifyIdToken(token);
-        reporterName = decoded.name || decoded.emailName || reporterName || decoded.uid;
-        reporterEmail = decoded.email || reporterEmail || '';
-      }
-    } catch {
-      // ignore token errors for public submissions
+    if (req.user) {
+      reporterName = req.user.name || reporterName || req.user.uid;
+      reporterEmail = req.user.email || reporterEmail || '';
     }
 
     let screenshotUrl = '';

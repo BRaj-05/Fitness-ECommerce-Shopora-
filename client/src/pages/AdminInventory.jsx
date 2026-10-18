@@ -1,14 +1,19 @@
 import {
+  createElement,
   useEffect,
   useMemo,
   useState,
 } from "react";
 
 import AdminNavbar from "../components/AdminNavbar";
+import AdminEmptyState from "../components/AdminEmptyState";
+import AdminPageHeader from "../components/AdminPageHeader";
+import AdminStatCard from "../components/AdminStatCard";
 import ProductVisual from "../components/ProductVisual";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
 import { API_URL } from "../config/app";
 import { fmt } from "../utils/formatters";
+import { AlertTriangle, Boxes, Images, Layers3, Link, Package, Pencil, Plus, RefreshCw, Trash2, Upload, X } from "lucide-react";
 
 const API = `${API_URL}/api`;
 
@@ -43,6 +48,9 @@ const EMPTY_FORM = {
   reviews: 0,
   badge: "",
   image: "",
+  imageSource: "url",
+  imageCredit: null,
+  autoPhoto: false,
   stock: "",
   reserved: 0,
   description: "",
@@ -148,6 +156,12 @@ export default function AdminInventory() {
 
   const [saving, setSaving] =
     useState(false);
+
+  const [photoSearchOpen, setPhotoSearchOpen] = useState(false);
+  const [photoQuery, setPhotoQuery] = useState("");
+  const [photoResults, setPhotoResults] = useState([]);
+  const [photoSearching, setPhotoSearching] = useState(false);
+  const [photoError, setPhotoError] = useState("");
 
   const [
     uploadingImage,
@@ -327,6 +341,9 @@ export default function AdminInventory() {
         product.badge || "",
       image:
         product.image || "",
+      imageSource: product.imageSource || "url",
+      imageCredit: product.imageCredit || null,
+      autoPhoto: false,
       stock:
         product.stock === null
           ? ""
@@ -407,10 +424,7 @@ export default function AdminInventory() {
           );
         }
 
-        setField(
-          "image",
-          data.imageUrl,
-        );
+        setForm((current) => ({ ...current, image: data.imageUrl, imageSource: "upload", imageCredit: null }));
       } catch (
         uploadError
       ) {
@@ -424,6 +438,52 @@ export default function AdminInventory() {
         );
       }
     };
+
+  const searchProductPhotos = async (queryOverride = "") => {
+    const query = String(queryOverride || photoQuery || `${form.name} ${form.type} ${form.category} fitness product`).trim();
+    if (!query) return;
+    setPhotoQuery(query);
+    setPhotoSearching(true);
+    setPhotoError("");
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API}/products/image-search?q=${encodeURIComponent(query)}`, {
+        headers,
+        credentials: "include",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Unable to search product photos");
+      setPhotoResults(data.results || []);
+    } catch (searchError) {
+      setPhotoError(searchError.message || "Photo search is unavailable. Upload an image or use a URL.");
+    } finally {
+      setPhotoSearching(false);
+    }
+  };
+
+  const openPhotoSearch = () => {
+    setPhotoSearchOpen(true);
+    setPhotoResults([]);
+    setPhotoError("");
+    searchProductPhotos();
+  };
+
+  const selectProductPhoto = (photo) => {
+    setForm((current) => ({
+      ...current,
+      image: photo.imageUrl,
+      imageSource: "pexels",
+      imageCredit: {
+        provider: "Pexels",
+        photographer: photo.photographer,
+        photographerUrl: photo.photographerUrl,
+        sourceUrl: photo.pexelsUrl,
+        sourceId: photo.pexelsId,
+      },
+      autoPhoto: false,
+    }));
+    setPhotoSearchOpen(false);
+  };
 
   const payloadFromForm = () => {
     const highlights =
@@ -472,6 +532,12 @@ export default function AdminInventory() {
 
       image:
         form.image.trim(),
+
+      imageSource: form.imageSource || (form.image ? "url" : "generated"),
+
+      imageCredit: form.imageCredit || undefined,
+
+      autoPhoto: Boolean(form.autoPhoto),
 
       stock:
         form.stock === ""
@@ -631,36 +697,19 @@ export default function AdminInventory() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--lux-bg)] text-[var(--lux-ink)]">
+    <div className="admin-lux-page">
       <AdminNavbar
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
       />
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
-        <section className="lux-admin-hero flex-col items-start text-white sm:flex-row sm:items-end">
-          <div>
-            <p className="lux-eyebrow text-white/45">
-              Inventory management
-            </p>
-
-            <h1 className="font-heading mt-2 text-4xl font-extrabold tracking-tight">
-              Products
-            </h1>
-
-            <p className="mt-2 max-w-2xl text-sm text-white/50">
-              Create products, update prices and stock, manage images and watch reserved inventory.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={openCreate}
-            className="lux-primary-light w-fit"
-          >
-            + Add product
-          </button>
-        </section>
+      <main className="admin-page-content mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
+        <AdminPageHeader
+          eyebrow="Inventory management"
+          title="Products"
+          description="Create products, update prices and stock, manage images and watch reserved inventory."
+          action={<button type="button" onClick={openCreate} className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--lux-ink)] px-5 text-sm font-bold text-[var(--lux-bg)] transition-opacity hover:opacity-85"><Plus size={17} />Add product</button>}
+        />
 
         {error && (
           <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200">
@@ -669,43 +718,12 @@ export default function AdminInventory() {
         )}
 
         <section className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[
-            [
-              "Products",
-              stats.products,
-            ],
-            [
-              "Total units",
-              stats.units,
-            ],
-            [
-              "Reserved",
-              stats.reserved,
-            ],
-            [
-              "Low/out",
-              stats.low,
-            ],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="lux-admin-card p-5"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400">
-                {label}
-              </p>
-
-              <p className="font-heading mt-3 text-3xl font-extrabold">
-                {loading
-                  ? "—"
-                  : Number(
-                      value,
-                    ).toLocaleString(
-                      "en-IN",
-                    )}
-              </p>
-            </div>
-          ))}
+          {loading ? [...Array(4)].map((_, index) => <div key={index} className="lux-admin-card h-32 animate-pulse bg-[var(--lux-soft)]" />) : [
+            { label: "Products", value: stats.products, icon: Package, accent: "bg-[var(--lux-violet)]", hint: "Catalog entries" },
+            { label: "Total units", value: stats.units, icon: Layers3, accent: "bg-[var(--lux-mint)]", hint: "Units in inventory" },
+            { label: "Reserved", value: stats.reserved, icon: Boxes, accent: "bg-[var(--lux-orange)]", hint: "Held in active carts" },
+            { label: "Low or out", value: stats.low, icon: AlertTriangle, accent: "bg-amber-500", hint: "Needs attention" },
+          ].map((card, index) => <AdminStatCard key={card.label} {...card} index={index} />)}
         </section>
 
         <section className="lux-admin-card mt-6 p-4 sm:p-5">
@@ -717,7 +735,7 @@ export default function AdminInventory() {
                   event.target.value,
                 )
               }
-              placeholder="Search product, brand, type or ID…"
+              placeholder="Search product, brand, type or ID..."
               className="h-11 rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] px-4 text-sm outline-none focus:border-[var(--lux-muted)]"
             />
 
@@ -774,6 +792,9 @@ export default function AdminInventory() {
               </thead>
 
               <tbody className="divide-y divide-stone-100 dark:divide-slate-800">
+                {loading && (
+                  <tr><td colSpan={8} className="p-5"><div className="h-20 animate-pulse rounded-xl bg-[var(--lux-soft)]" /></td></tr>
+                )}
                 {!loading &&
                   filtered.map(
                     (product) => {
@@ -812,7 +833,7 @@ export default function AdminInventory() {
                                 </p>
 
                                 <p className="mt-0.5 text-[10px] text-stone-400">
-                                  #{product.productId} ·{" "}
+                                  #{product.productId} /{" "}
                                   {
                                     product.brand
                                   }
@@ -835,7 +856,7 @@ export default function AdminInventory() {
                           <td className="px-5 py-4 text-sm">
                             {product.stock ===
                             null
-                              ? "∞"
+                              ? "Unlimited"
                               : product.stock}
                           </td>
 
@@ -847,13 +868,13 @@ export default function AdminInventory() {
                           <td className="px-5 py-4 text-sm font-bold">
                             {currentAvailable ===
                             null
-                              ? "∞"
+                              ? "Unlimited"
                               : currentAvailable}
                           </td>
 
                           <td className="px-5 py-4">
                             <span
-                              className={`rounded-lg px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] ${currentStatus.className}`}
+                              className={`admin-status-change rounded-lg px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] ${currentStatus.className}`}
                             >
                               {
                                 currentStatus.label
@@ -870,9 +891,9 @@ export default function AdminInventory() {
                                     product,
                                   )
                                 }
-                                className="rounded-lg bg-[var(--lux-ink)] px-3 py-2 text-xs font-semibold text-[var(--lux-bg)] transition hover:opacity-85"
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--lux-ink)] px-3 py-2 text-xs font-semibold text-[var(--lux-bg)] transition hover:opacity-85"
                               >
-                                Edit / Restock
+                                <Pencil size={13} />Edit / Restock
                               </button>
 
                               <button
@@ -882,9 +903,9 @@ export default function AdminInventory() {
                                     product,
                                   )
                                 }
-                                className="rounded-lg border border-transparent px-3 py-2 text-xs font-semibold text-[var(--lux-muted)] transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:hover:border-rose-500/20 dark:hover:bg-rose-500/10"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-3 py-2 text-xs font-semibold text-[var(--lux-muted)] transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:hover:border-rose-500/20 dark:hover:bg-rose-500/10"
                               >
-                                Delete
+                                <Trash2 size={13} />Delete
                               </button>
                             </div>
                           </td>
@@ -896,14 +917,7 @@ export default function AdminInventory() {
                 {!loading &&
                   filtered.length ===
                     0 && (
-                    <tr>
-                      <td
-                        colSpan={8}
-                        className="px-5 py-14 text-center text-sm text-stone-400"
-                      >
-                        No products match the current filter.
-                      </td>
-                    </tr>
+                    <tr><td colSpan={8}><AdminEmptyState icon={Package} title="No matching products" hint="Try a different search or product type." /></td></tr>
                   )}
               </tbody>
             </table>
@@ -938,9 +952,10 @@ export default function AdminInventory() {
             onClick={() =>
               setModalOpen(false)
             }
+            aria-label="Close product editor"
             className="grid h-10 w-10 place-items-center rounded-full hover:bg-stone-100 dark:hover:bg-slate-800"
           >
-            ×
+            <X size={19} />
           </button>
         </div>
 
@@ -962,12 +977,12 @@ export default function AdminInventory() {
               "text",
             ],
             [
-              "Price (₹)",
+              "Price (INR)",
               "price",
               "number",
             ],
             [
-              "Original price (₹)",
+              "Original price (INR)",
               "originalPrice",
               "number",
             ],
@@ -996,11 +1011,6 @@ export default function AdminInventory() {
               "badge",
               "text",
             ],
-            [
-              "Image URL / local path",
-              "image",
-              "text",
-            ],
           ].map(
             ([
               label,
@@ -1009,11 +1019,7 @@ export default function AdminInventory() {
             ]) => (
               <label
                 key={field}
-                className={
-                  field === "image"
-                    ? "sm:col-span-2"
-                    : ""
-                }
+                className=""
               >
                 <span className="text-xs font-semibold text-stone-500 dark:text-slate-400">
                   {label}
@@ -1044,30 +1050,39 @@ export default function AdminInventory() {
             ),
           )}
 
-          <label className="sm:col-span-2">
-            <span className="text-xs font-semibold text-stone-500 dark:text-slate-400">
-              Or upload a product image
-            </span>
+          <div className="sm:col-span-2">
+            <span className="text-xs font-semibold text-stone-500 dark:text-slate-400">Product image</span>
+            <div className="mt-2 grid grid-cols-3 gap-2 rounded-xl bg-[var(--lux-soft)] p-1">
+              {[
+                ["upload", "Upload", Upload],
+                ["pexels", "Find on Pexels", Images],
+                ["url", "Image URL", Link],
+              ].map(([value, label, Icon]) => (
+                <button key={value} type="button" onClick={() => value === "pexels" ? openPhotoSearch() : setField("imageSource", value)} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-2 text-xs font-bold transition ${form.imageSource === value ? "bg-[var(--lux-surface)] text-[var(--lux-ink)] shadow-sm" : "text-[var(--lux-muted)]"}`}>
+                  {createElement(Icon, { size: 15 })}{label}
+                </button>
+              ))}
+            </div>
 
-            <input
-              type="file"
-              accept="image/*"
-              disabled={
-                uploadingImage
-              }
-              onChange={(event) =>
-                uploadProductImage(
-                  event.target
-                    .files?.[0],
-                )
-              }
-              className="mt-1.5 block w-full rounded-xl border border-stone-200 bg-white p-3 text-sm dark:border-slate-700 dark:bg-slate-950"
-            />
+            {form.imageSource === "upload" && (
+              <input type="file" accept="image/*" disabled={uploadingImage} onChange={(event) => uploadProductImage(event.target.files?.[0])} className="mt-3 block w-full rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] p-3 text-sm" />
+            )}
 
-            <p className="mt-1 text-[10px] text-stone-400">
-              Optional. Requires Cloudinary. Without it, use a /products/... local path or HTTPS URL.
-            </p>
-          </label>
+            {form.imageSource === "url" && (
+              <input type="url" value={form.image} onChange={(event) => setField("image", event.target.value)} placeholder="https://... or /products/..." className="mt-3 h-11 w-full rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] px-3 text-sm outline-none focus:border-[var(--lux-violet)]" />
+            )}
+
+            {form.imageSource === "pexels" && (
+              <button type="button" onClick={openPhotoSearch} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--lux-line)] px-4 text-sm font-bold"><Images size={17} />Choose another photo</button>
+            )}
+
+            {!editingId && !form.image && (
+              <label className="mt-3 flex items-center gap-2 text-xs text-[var(--lux-muted)]">
+                <input type="checkbox" checked={form.autoPhoto} onChange={(event) => setField("autoPhoto", event.target.checked)} />
+                Auto-select a suitable product photo when available
+              </label>
+            )}
+          </div>
 
           {form.image && (
             <div className="sm:col-span-2 h-40 overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 dark:border-slate-700">
@@ -1157,7 +1172,7 @@ export default function AdminInventory() {
 
           <label className="sm:col-span-2">
             <span className="text-xs font-semibold text-stone-500 dark:text-slate-400">
-              Highlights — one per line
+              Highlights - one per line
             </span>
 
             <textarea
@@ -1195,12 +1210,42 @@ export default function AdminInventory() {
             className="rounded-full bg-stone-950 px-6 py-3 text-sm font-bold text-white disabled:opacity-50 dark:bg-white dark:text-slate-950"
           >
             {saving
-              ? "Saving…"
+              ? "Saving..."
               : editingId
                 ? "Save changes"
                 : "Create product"}
           </button>
         </div>
+      </Modal>
+
+      <Modal open={photoSearchOpen} onClose={() => setPhotoSearchOpen(false)}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="lux-eyebrow">PEXELS PRODUCT SEARCH</p>
+            <h2 className="mt-2 font-heading text-2xl font-extrabold">Find a product photo</h2>
+            <p className="mt-1 text-sm text-[var(--lux-muted)]">Select a photo to import through the server. Upload and URL options remain available.</p>
+          </div>
+          <button type="button" onClick={() => setPhotoSearchOpen(false)} aria-label="Close photo search" className="grid h-10 w-10 place-items-center rounded-xl hover:bg-[var(--lux-soft)]"><X size={18} /></button>
+        </div>
+
+        <form onSubmit={(event) => { event.preventDefault(); searchProductPhotos(photoQuery); }} className="mt-5 flex gap-2">
+          <input value={photoQuery} onChange={(event) => setPhotoQuery(event.target.value)} placeholder="Yoga mat fitness product" className="h-11 min-w-0 flex-1 rounded-xl border border-[var(--lux-line)] bg-[var(--lux-bg)] px-3 text-sm outline-none focus:border-[var(--lux-violet)]" />
+          <button type="submit" disabled={photoSearching} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--lux-ink)] px-4 text-sm font-bold text-[var(--lux-bg)] disabled:opacity-50"><RefreshCw size={16} />Search</button>
+        </form>
+
+        {photoError && <div className="mt-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-500">{photoError}</div>}
+        {photoSearching ? (
+          <div className="grid grid-cols-2 gap-3 py-6 sm:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="shopora-skeleton aspect-square rounded-xl" />)}</div>
+        ) : (
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {photoResults.map((photo) => (
+              <button key={photo.pexelsId} type="button" onClick={() => selectProductPhoto(photo)} className="group overflow-hidden rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] text-left transition hover:border-[var(--lux-violet)]">
+                <img src={photo.previewUrl} alt={photo.alt} className="aspect-square w-full object-cover transition duration-300 group-hover:scale-[1.03]" loading="lazy" />
+                <span className="block truncate px-3 py-2 text-[11px] text-[var(--lux-muted)]">Photo by {photo.photographer}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </Modal>
     </div>
   );

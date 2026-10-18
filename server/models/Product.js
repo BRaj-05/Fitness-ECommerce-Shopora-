@@ -30,6 +30,19 @@ const ProductSchema = new mongoose.Schema(
     reviews: { type: Number, default: 0 },
     badge: { type: String, default: null },
     image: { type: String, default: '' },
+    imageSource: {
+      type: String,
+      enum: ["upload", "pexels", "url", "seed", "generated"],
+      default: undefined,
+    },
+    imageCredit: {
+      provider: { type: String },
+      photographer: { type: String },
+      photographerUrl: { type: String },
+      sourceUrl: { type: String },
+      sourceId: { type: String },
+    },
+    fallbackImage: { type: String, default: "" },
     // total stock available (optional). If null, stock is not enforced.
     stock: { type: Number, default: null },
     // quantity reserved by carts (sum of quantities currently in carts)

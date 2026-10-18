@@ -4,13 +4,18 @@ import { useNavigate } from "react-router-dom";
 import { fmt } from "../utils/formatters";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
 import AdminNavbar from "../components/AdminNavbar";
+import AdminEmptyState from "../components/AdminEmptyState";
+import AdminPageHeader from "../components/AdminPageHeader";
+import AdminStatCard from "../components/AdminStatCard";
+import { AlertTriangle, CheckCircle2, Crown, UserPlus, Users } from "lucide-react";
 
 const API_BASE = `${import.meta.env.VITE_API_URL}/api`;
+const MISSING_VALUE = "\u2014";
 
 const SEGMENT_STYLES = {
-  "high-value": "bg-stone-900 text-white",
-  returning: "border border-stone-300 text-stone-600",
-  new: "bg-stone-100 text-stone-600",
+  "high-value": "bg-[var(--lux-ink)] text-[var(--lux-bg)]",
+  returning: "border border-[var(--lux-violet)] text-[var(--lux-violet)]",
+  new: "bg-[var(--lux-soft)] text-[var(--lux-muted)]",
 };
 
 const CustomerAvatar = ({ name, photoURL, size = 8 }) => (
@@ -30,7 +35,7 @@ const CustomerAvatar = ({ name, photoURL, size = 8 }) => (
 
 const SkeletonRow = () => (
   <tr className="border-b border-stone-100">
-    {[55, 20, 15, 20, 15, 15].map((w, i) => (
+    {[55, 20, 15, 20, 15, 15, 15, 15].map((w, i) => (
       <td key={i} className="px-4 sm:px-6 py-4 sm:py-5">
         <div className="h-3 bg-stone-100 rounded-full animate-pulse"
           style={{ width: `${w}%`, margin: i > 0 ? "0 auto" : "0" }} />
@@ -41,15 +46,13 @@ const SkeletonRow = () => (
 
 const Empty = () => (
   <tr>
-    <td colSpan={7} className="py-12 sm:py-16 text-center">
-      <p className="text-3xl text-stone-200 mb-3">∅</p>
-      <p className="text-sm text-stone-400 mb-1">No customers found</p>
-      <p className="text-xs text-stone-300">Customers appear once a paid order exists</p>
+    <td colSpan={8}>
+      <AdminEmptyState icon={Users} title="No customers found" hint="Customers appear once a paid order exists." />
     </td>
   </tr>
 );
 
-// ── Mobile customer card ──────────────────────────────────────────────────
+// Mobile customer card
 const CustomerMobileCard = ({ c, index, onClick, onSendReminder, isSending, reminderSent, reminderError }) => (
   <div className="border-b border-stone-100 last:border-0">
     <div
@@ -66,17 +69,17 @@ const CustomerMobileCard = ({ c, index, onClick, onSendReminder, isSending, remi
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          {c.customerName && c.customerName !== "—" ? (
+          {c.customerName && c.customerName !== MISSING_VALUE ? (
             <p className="text-sm font-medium text-stone-700 truncate">{c.customerName}</p>
           ) : (
-            <p className="text-xs text-stone-400 font-mono">{c.userId?.slice(0, 12)}…</p>
+            <p className="text-xs text-stone-400 font-mono">{c.userId?.slice(0, 12)}...</p>
           )}
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize shrink-0
                           ${SEGMENT_STYLES[c.segment]}`}>
             {c.segment}
           </span>
         </div>
-        {c.customerEmail && c.customerEmail !== "—" && (
+        {c.customerEmail && c.customerEmail !== MISSING_VALUE && (
           <p className="text-xs text-stone-400 truncate">{c.customerEmail}</p>
         )}
       </div>
@@ -92,7 +95,7 @@ const CustomerMobileCard = ({ c, index, onClick, onSendReminder, isSending, remi
     {/* Mobile reminder action row */}
     <div className="px-4 py-2 bg-stone-50 border-t border-stone-100">
       {reminderSent[c.userId] ? (
-        <span className="text-xs text-stone-400">✓ Reminder sent</span>
+        <span className="flex items-center gap-1.5 text-xs text-[var(--lux-mint)]"><CheckCircle2 size={14} />Reminder sent</span>
       ) : reminderError[c.userId] ? (
         <p className="text-xs text-red-600">{reminderError[c.userId]}</p>
       ) : (
@@ -135,7 +138,7 @@ export default function AdminCustomers() {
         setLoading(true);
         setError(null);
         const headers = await getAuthHeaders();
-        const res = await fetch(`${API_BASE}/customers?page=${page}&limit=${PAGE_LIMIT}`, { headers });
+        const res = await fetch(`${API_BASE}/customers?page=${page}&limit=${PAGE_LIMIT}`, { headers, credentials: "include" });
         const json = await res.json();
         if (!json.success) {
           throw new Error(json.error || "Failed to load customers");
@@ -208,63 +211,39 @@ export default function AdminCustomers() {
   const topBySpend = [...customers].sort((a, b) => b.totalSpend - a.totalSpend).slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-stone-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="admin-lux-page" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
         
       `}</style>
 
       <AdminNavbar menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-12">
+      <div className="admin-page-content max-w-6xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-12">
 
-        {/* Page heading */}
-        <div className="mb-8 sm:mb-10">
-          <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-2">Management</p>
-          <h1 style={{ fontFamily: "Manrope, Inter, sans-serif" }}
-            className="text-3xl sm:text-4xl md:text-5xl text-stone-900">
-            Customers
-          </h1>
-        </div>
+        <AdminPageHeader eyebrow="Customer intelligence" title="Customers" description="Understand value, engagement and order history across the Shopora customer base." />
 
         {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-100 rounded-2xl px-4 sm:px-6 py-4 mb-6 sm:mb-8">
-            <p className="text-sm text-red-600">⚠ {error}</p>
+            <p className="flex items-center gap-2 text-sm text-red-600"><AlertTriangle size={16} />{error}</p>
             <p className="text-xs text-red-400 mt-1">Please try refreshing the page</p>
           </div>
         )}
 
-        {/* KPI Cards — single col on mobile, 3-col on sm+ */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-5 mb-8 sm:mb-10">
-          {[
-            { label: "Total Customers", value: totalCustomers, icon: "◎" },
-            { label: "High Value", value: customers.filter(c => c.segment === "high-value").length, icon: "⭑" },
-            { label: "New Customers", value: customers.filter(c => c.segment === "new").length, icon: "+" },
-          ].map(({ label, value, icon }) => (
-            <div key={label}
-              className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-7
-                         hover:border-stone-300 hover:shadow-lg transition-all duration-300">
-              <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-4 sm:mb-5">{label}</p>
-              <div className="flex items-end justify-between">
-                {loading ? (
-                  <div className="h-8 sm:h-9 w-16 bg-stone-100 rounded-xl animate-pulse" />
-                ) : (
-                  <p style={{ fontFamily: "Manrope, Inter, sans-serif" }}
-                    className="text-3xl sm:text-4xl md:text-5xl text-stone-900 leading-none">
-                    {value}
-                  </p>
-                )}
-                <span className="text-xl text-stone-200 mb-0.5">{icon}</span>
-              </div>
-            </div>
-          ))}
+        {/* KPI cards */}
+        <div className="mb-8 grid grid-cols-1 gap-3 sm:mb-10 sm:grid-cols-3 sm:gap-4 md:gap-5">
+          {loading ? [...Array(3)].map((_, index) => <div key={index} className="lux-admin-card h-32 animate-pulse bg-[var(--lux-soft)]" />) : [
+            { label: "Total customers", value: totalCustomers, icon: Users, accent: "bg-[var(--lux-violet)]", hint: "Paid customer records" },
+            { label: "High value", value: customers.filter(c => c.segment === "high-value").length, icon: Crown, accent: "bg-[var(--lux-orange)]", hint: "Highest-spend segment" },
+            { label: "New customers", value: customers.filter(c => c.segment === "new").length, icon: UserPlus, accent: "bg-[var(--lux-mint)]", hint: "Newest customer segment" },
+          ].map((card, index) => <AdminStatCard key={card.label} {...card} index={index} />)}
         </div>
 
-        {/* Insights — simple visuals */}
+        {/* Customer insights */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 sm:mb-10">
-          <div className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-7 hover:border-stone-300 hover:shadow-lg transition-all duration-300">
-            <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-4">Insights</p>
-            <h3 style={{ fontFamily: "Manrope, Inter, sans-serif" }} className="text-lg text-stone-900 mb-4">Segment distribution</h3>
+          <div className="lux-admin-card shopora-lift p-5 sm:p-7">
+            <p className="lux-eyebrow mb-4">Insights</p>
+            <h3 className="font-heading mb-4 text-lg font-extrabold text-[var(--lux-ink)]">Segment distribution</h3>
             <div className="space-y-3">
               {['high-value', 'returning', 'new'].map(seg => {
                 const count = segmentCounts[seg] || 0;
@@ -277,8 +256,8 @@ export default function AdminCustomers() {
                         <span className="text-xs text-stone-600 capitalize">{seg.replace('-', ' ')}</span>
                         <span className="text-xs text-stone-400">{count} ({pct}%)</span>
                       </div>
-                      <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
-                        <div style={{ width: `${pct}%` }} className="h-2 bg-stone-900" />
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--lux-soft)]">
+                        <div style={{ width: `${pct}%` }} className="h-2 bg-[var(--lux-violet)] transition-[width] duration-300" />
                       </div>
                     </div>
                   </div>
@@ -287,9 +266,9 @@ export default function AdminCustomers() {
             </div>
           </div>
 
-          <div className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-7 hover:border-stone-300 hover:shadow-lg transition-all duration-300">
-            <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-4">Top customers</p>
-            <h3 style={{ fontFamily: "Manrope, Inter, sans-serif" }} className="text-lg text-stone-900 mb-4">Top spenders</h3>
+          <div className="lux-admin-card shopora-lift p-5 sm:p-7">
+            <p className="lux-eyebrow mb-4">Top customers</p>
+            <h3 className="font-heading mb-4 text-lg font-extrabold text-[var(--lux-ink)]">Top spenders</h3>
             <div className="space-y-3">
               {topBySpend.length === 0 && <p className="text-xs text-stone-400">No data yet</p>}
               {topBySpend.map((c, i) => {
@@ -299,11 +278,11 @@ export default function AdminCustomers() {
                     <span className="text-xs text-stone-300 w-5">#{i + 1}</span>
                     <div className="flex-1">
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm text-stone-700 truncate">{c.customerName && c.customerName !== '—' ? c.customerName : c.userId}</span>
+                        <span className="text-sm text-stone-700 truncate">{c.customerName && c.customerName !== MISSING_VALUE ? c.customerName : c.userId}</span>
                         <span className="text-xs text-stone-400">{fmt(c.totalSpend)}</span>
                       </div>
-                      <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
-                        <div style={{ width: `${pct}%` }} className="h-2 bg-stone-900" />
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--lux-soft)]">
+                        <div style={{ width: `${pct}%` }} className="h-2 bg-[var(--lux-orange)] transition-[width] duration-300" />
                       </div>
                     </div>
                   </div>
@@ -314,13 +293,12 @@ export default function AdminCustomers() {
         </div>
 
         {/* Customer list card */}
-        <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden
-                        hover:border-stone-300 transition-all duration-300">
+        <div className="lux-admin-table">
           <div className="px-4 sm:px-7 py-4 sm:py-5 border-b border-stone-100
                           flex justify-between items-center">
             <div>
-              <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-0.5">Directory</p>
-              <h2 style={{ fontFamily: "Manrope, Inter, sans-serif" }} className="text-xl text-stone-900">
+              <p className="lux-eyebrow mb-0.5">Directory</p>
+              <h2 className="font-heading text-xl font-extrabold text-[var(--lux-ink)]">
                 All Customers
               </h2>
             </div>
@@ -340,11 +318,7 @@ export default function AdminCustomers() {
               ))
             )}
             {!loading && customers.length === 0 && (
-              <div className="py-12 text-center">
-                <p className="text-3xl text-stone-200 mb-3">∅</p>
-                <p className="text-sm text-stone-400 mb-1">No customers found</p>
-                <p className="text-xs text-stone-300">Customers appear once a paid order exists</p>
-              </div>
+              <AdminEmptyState icon={Users} title="No customers found" hint="Customers appear once a paid order exists." />
             )}
             {!loading && customers.map((c, index) => (
               <CustomerMobileCard
@@ -392,7 +366,7 @@ export default function AdminCustomers() {
                     className="select-none hover:bg-stone-50 transition-colors cursor-pointer group">
                     <td className="px-6 py-5 text-stone-300 text-xs">{index + 1}</td>
                     <td className="px-6 py-5">
-                      {c.customerName && c.customerName !== "—" ? (
+                      {c.customerName && c.customerName !== MISSING_VALUE ? (
                         <div className="flex items-center gap-3">
                           <CustomerAvatar name={c.customerName} photoURL={c.customerPhoto} size={8} />
                           <div className="min-w-0">
@@ -403,14 +377,14 @@ export default function AdminCustomers() {
                           </div>
                         </div>
                       ) : (
-                        <span className="text-xs text-stone-400 font-mono">{c.userId?.slice(0, 14)}…</span>
+                        <span className="text-xs text-stone-400 font-mono">{c.userId?.slice(0, 14)}...</span>
                       )}
                     </td>
                     <td className="px-6 py-5">
-                      {c.customerEmail && c.customerEmail !== "—" ? (
+                      {c.customerEmail && c.customerEmail !== MISSING_VALUE ? (
                         <span className="text-xs text-stone-500">{c.customerEmail}</span>
                       ) : (
-                        <span className="text-xs text-stone-300">—</span>
+                        <span className="text-xs text-stone-300">Not provided</span>
                       )}
                     </td>
                     <td className="px-6 py-5 text-center">
@@ -437,7 +411,7 @@ export default function AdminCustomers() {
                     </td>
                     <td className="px-6 py-5 text-center">
                       {reminderSent[c.userId] ? (
-                        <span className="text-xs text-stone-400">✓ Sent</span>
+                        <span className="inline-flex items-center gap-1.5 text-xs text-[var(--lux-mint)]"><CheckCircle2 size={14} />Sent</span>
                       ) : reminderError[c.userId] ? (
                         <div className="text-xs text-red-600 max-w-xs">
                           <p className="font-medium">{reminderError[c.userId]}</p>

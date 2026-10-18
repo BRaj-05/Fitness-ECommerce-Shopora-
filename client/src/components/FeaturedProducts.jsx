@@ -5,6 +5,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import ProductVisual from "./ProductVisual";
+import ShoporaLoader from "./ShoporaLoader";
 import { fmt } from "../utils/formatters";
 import { API_URL } from "../config/app";
 
@@ -65,7 +66,7 @@ export default function FeaturedProducts() {
 
   return (
     <section className="border-b border-[var(--lux-line)] bg-[var(--lux-bg)] py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+      <div className="w-full">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="lux-eyebrow">
@@ -93,18 +94,14 @@ export default function FeaturedProducts() {
         </div>
 
         {loading ? (
-          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({
-              length: 6,
-            }).map((_, index) => (
-              <div
-                key={index}
-                className="h-52 animate-pulse rounded-3xl border border-stone-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-              />
-            ))}
+          <div className="mt-7">
+            <ShoporaLoader label="Curating featured products" className="mb-4 text-[var(--lux-muted)]" />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => <div key={index} className="shopora-skeleton h-52 rounded-2xl border border-[var(--lux-line)]" />)}
+            </div>
           </div>
         ) : (
-          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="shopora-content-reveal mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
               <button
                 type="button"

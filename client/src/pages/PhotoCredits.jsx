@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { API_URL } from "../config/app";
+import Navbar from "../components/Navbar";
+import SiteFooter from "../components/SiteFooter";
 
 export default function PhotoCredits() {
   const [manifest, setManifest] = useState(null);
   const [error, setError] = useState("");
+  const [databasePhotos, setDatabasePhotos] = useState([]);
 
   useEffect(() => {
     let active = true;
@@ -20,18 +24,37 @@ export default function PhotoCredits() {
         if (active) setError(err.message || "Unable to load photo credits.");
       });
 
+    fetch(`${API_URL}/api/products/photo-credits`)
+      .then((response) => response.ok ? response.json() : [])
+      .then((items) => {
+        if (!active || !Array.isArray(items)) return;
+        setDatabasePhotos(items.map((item) => ({
+          productId: item.productId,
+          productName: item.name,
+          publicPath: item.image,
+          photographer: item.imageCredit?.photographer || "Pexels contributor",
+          photographerUrl: item.imageCredit?.photographerUrl,
+          pexelsUrl: item.imageCredit?.sourceUrl,
+          pexelsId: item.imageCredit?.sourceId || `db-${item.productId}`,
+          alt: item.name,
+        })));
+      })
+      .catch(() => {});
+
     return () => {
       active = false;
     };
   }, []);
 
   const photos = useMemo(
-    () => Object.values(manifest?.categories || {}).flat(),
-    [manifest],
+    () => [...Object.values(manifest?.categories || {}).flat(), ...databasePhotos],
+    [databasePhotos, manifest],
   );
 
   return (
-    <main className="min-h-screen bg-[var(--lux-bg)] px-4 py-10 text-[var(--lux-ink)] sm:px-6 lg:px-10">
+    <div className="min-h-screen bg-[var(--lux-bg)] text-[var(--lux-ink)]">
+      <Navbar variant="landing" />
+      <main className="px-4 py-10 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-6xl">
         <Link
           to="/"
@@ -43,7 +66,7 @@ export default function PhotoCredits() {
         <p className="mt-10 text-[9px] font-extrabold uppercase tracking-[0.2em] text-[var(--lux-muted)]">
           IMAGE CREDITS
         </p>
-        <h1 className="mt-3 font-heading text-4xl font-extrabold tracking-[-0.045em] sm:text-6xl">
+        <h1 className="mt-3 font-heading text-4xl font-extrabold tracking-normal sm:text-6xl">
           Product photography.
         </h1>
         <p className="mt-5 max-w-2xl text-sm leading-7 text-[var(--lux-muted)]">
@@ -93,6 +116,8 @@ export default function PhotoCredits() {
           ))}
         </div>
       </div>
-    </main>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }

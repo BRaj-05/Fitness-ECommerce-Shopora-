@@ -11,8 +11,9 @@ import {
 
 import Navbar from "../components/Navbar";
 import ProductVisual from "../components/ProductVisual";
+import ShoporaLoader from "../components/ShoporaLoader";
 
-import { auth } from "../auth/firebase";
+import { useAuth } from "../auth/useAuth";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
 import { fmt } from "../utils/formatters";
 import {
@@ -114,6 +115,7 @@ function useRazorpayScript() {
 }
 
 export default function PaymentPage() {
+  const { user } = useAuth();
   const navigate =
     useNavigate();
 
@@ -328,9 +330,6 @@ export default function PaymentPage() {
 
   const createPaymentOrder =
     async () => {
-      const user =
-        auth.currentUser;
-
       if (!user) {
         navigate("/auth");
         return null;
@@ -581,9 +580,6 @@ export default function PaymentPage() {
 
   const handleDemoSuccess =
     async () => {
-      const user =
-        auth.currentUser;
-
       if (!user) {
         navigate("/auth");
         return;
@@ -663,6 +659,16 @@ export default function PaymentPage() {
         variant="home"
       />
 
+      {busy && (
+        <div className="fixed inset-0 z-[1400] grid place-items-center bg-black/65 px-5 backdrop-blur-md" role="status" aria-live="assertive">
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0d0f13] p-8 text-center text-white shadow-2xl shadow-black/40">
+            <ShoporaLoader label="Securing your payment" size={28} className="justify-center text-[var(--lux-mint)]" />
+            <p className="mt-5 font-heading text-2xl font-extrabold">Securing your payment</p>
+            <p className="mt-2 text-sm text-white/50">Please do not close this window.</p>
+          </div>
+        </div>
+      )}
+
       <main className="shopora-store-enter mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
@@ -696,7 +702,7 @@ export default function PaymentPage() {
             ref={errorRef}
             tabIndex={-1}
             role="alert"
-            className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 outline-none dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200"
+            className="shopora-error-shake mt-6 rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 outline-none dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200"
           >
             {error}
           </div>
@@ -857,10 +863,10 @@ export default function PaymentPage() {
               onClick={
                 handlePay
               }
-              className="shopora-button-press mt-6 min-h-12 w-full rounded-xl bg-white px-5 text-sm font-bold text-stone-950 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-45"
+              className="shopora-button-press mt-6 flex min-h-12 w-full items-center justify-center rounded-xl bg-white px-5 text-sm font-bold text-stone-950 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {paying
-                ? "Opening Razorpay…"
+                ? <ShoporaLoader label="Securing your payment..." size={17} />
                 : "Pay securely with Razorpay"}
             </button>
 
@@ -873,10 +879,10 @@ export default function PaymentPage() {
                 onClick={
                   handleDemoSuccess
                 }
-                className="shopora-button-press mt-3 min-h-11 w-full rounded-xl border border-white/15 px-5 text-xs font-semibold text-stone-300 transition hover:bg-white/5 disabled:opacity-45"
+                className="shopora-button-press mt-3 flex min-h-11 w-full items-center justify-center rounded-xl border border-white/15 px-5 text-xs font-semibold text-stone-300 transition hover:bg-white/5 disabled:opacity-45"
               >
                 {demoPaying
-                  ? "Creating demo order…"
+                  ? <ShoporaLoader label="Creating demo order" size={16} />
                   : "Simulate success (development only)"}
               </button>
             )}

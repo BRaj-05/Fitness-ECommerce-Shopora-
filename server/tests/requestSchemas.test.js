@@ -4,7 +4,42 @@ const {
   createOrderSchema,
   createProductSchema,
   updateProductSchema,
+  updateWorkoutLogSchema,
 } = require('../validation/requestSchemas');
+
+describe('requestSchemas - updateWorkoutLogSchema', () => {
+  test('accepts plan attendance and checklist data', () => {
+    const result = updateWorkoutLogSchema.body.safeParse({
+      date: '2026-10-08',
+      title: 'Hypertrophy Foundation - Day 1',
+      checkInAt: '2026-10-08T10:00:00.000Z',
+      checkOutAt: '2026-10-08T11:15:00.000Z',
+      checklist: [
+        { id: 'task-1', text: 'Complete warm-up', completed: true },
+      ],
+      plan: {
+        name: 'Hypertrophy Foundation',
+        focus: 'Muscle Building',
+        duration: '12 Weeks',
+        durationWeeks: 12,
+        difficulty: 'Beginner',
+        startDate: '2026-10-08',
+        startedAt: '2026-10-08T09:55:00.000Z',
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test('rejects checkout data with an invalid date key', () => {
+    const result = updateWorkoutLogSchema.body.safeParse({
+      date: '08-10-2026',
+      checkOutAt: '2026-10-08T11:15:00.000Z',
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
 
 describe('requestSchemas - cartAddSchema', () => {
   describe('params validation (userIdParamsSchema)', () => {

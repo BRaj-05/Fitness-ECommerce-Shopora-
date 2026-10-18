@@ -12,7 +12,7 @@ const { updateWorkoutLogSchema } = require('../validation/requestSchemas');
  */
 router.get('/', verifyFirebaseToken, async (req, res) => {
   try {
-    const logs = await WorkoutLog.find({ userId: req.user.uid });
+    const logs = await WorkoutLog.find({ userId: req.user.uid }).sort({ date: 1 });
     
     // Format response to match the legacy localStorage format: { 'YYYY-MM-DD': { title, notes, exercises } }
     const formattedLogs = {};
@@ -20,7 +20,11 @@ router.get('/', verifyFirebaseToken, async (req, res) => {
       formattedLogs[log.date] = {
         title: log.title,
         notes: log.notes,
-        exercises: log.exercises
+        exercises: log.exercises,
+        checklist: log.checklist,
+        checkInAt: log.checkInAt,
+        checkOutAt: log.checkOutAt,
+        plan: log.plan
       };
     }
     
@@ -38,13 +42,22 @@ router.get('/', verifyFirebaseToken, async (req, res) => {
  */
 router.post('/', verifyFirebaseToken, validateRequest(updateWorkoutLogSchema), async (req, res) => {
   try {
-    const { date, title, notes, exercises } = req.body;
-
-    const logData = {
-      title: title || '',
-      notes: notes || '',
-      exercises: exercises || []
-    };
+    const { date, ...updates } = req.body;
+    const allowedFields = [
+      'title',
+      'notes',
+      'exercises',
+      'checklist',
+      'checkInAt',
+      'checkOutAt',
+      'plan',
+    ];
+    const logData = {};
+    for (const field of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(updates, field)) {
+        logData[field] = updates[field];
+      }
+    }
 
     const updatedLog = await WorkoutLog.findOneAndUpdate(
       { userId: req.user.uid, date },

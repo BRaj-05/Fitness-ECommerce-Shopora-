@@ -3,12 +3,12 @@ const mongoose = require("mongoose");
 
 const userProfileSchema = new mongoose.Schema(
   {
-    userId: { type: String, required: true, unique: true }, // Firebase UID
+    userId: { type: String, required: true, unique: true }, // Stable Shopora internal user ID; existing values are preserved.
     isFirstLogin: { type: Boolean, default: true },              // false after first login banner is shown
     discountUsed: { type: Boolean, default: false },              // true after first order is placed
     discountPercent: { type: Number, default: 10 },              // 10% welcome discount
     // Email and first-purchase tracking
-    email: { type: String },                                       // User's email address (synced from Firebase)
+    email: { type: String },                                       // User email synchronized from the Shopora identity.
     firstPurchaseEmailSentAt: { type: Date },                     // Timestamp when first-purchase email was sent
     lastReminderEmailSentAt: { type: Date },                      // Timestamp when inactivity reminder email was sent
     // Profile fields

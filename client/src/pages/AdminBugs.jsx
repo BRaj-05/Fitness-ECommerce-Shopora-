@@ -1,30 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AlertTriangle, Bug, CheckCircle2 } from 'lucide-react';
 import AdminNavbar from '../components/AdminNavbar';
+import AdminEmptyState from '../components/AdminEmptyState';
+import AdminPageHeader from '../components/AdminPageHeader';
+import AdminStatCard from '../components/AdminStatCard';
 import { useAuth } from '../auth/useAuth';
 import { getBugs, patchBugStatus } from '../utils/api/bugs';
 import Toast from '../components/Toast';
 import BugScreenshot from '../components/BugScreenshot';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
 const SEGMENT_STYLES = {
-  open: "bg-stone-900 text-white",
-  "in-progress": "border border-stone-300 text-stone-600",
-  resolved: "bg-stone-100 text-stone-600",
+  open: "bg-[var(--lux-orange)] text-white",
+  "in-progress": "border border-[var(--lux-violet)] text-[var(--lux-violet)]",
+  resolved: "bg-[var(--lux-soft)] text-[var(--lux-muted)]",
 };
 
 const BugAvatar = ({ title }) => (
   <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0
-                   bg-stone-200 flex items-center justify-center`}>
-    <span className="text-xs font-medium text-stone-600">
-      {(title?.[0] || "!").toUpperCase()}
+                   bg-[var(--lux-soft)] flex items-center justify-center`}>
+    <span className="text-xs font-medium text-[var(--lux-muted)]">
+      {(title?.[0] || "B").toUpperCase()}
     </span>
   </div>
 );
 
 const SkeletonRow = () => (
   <tr className="border-b border-stone-100">
-    {[55, 20, 15, 20, 15, 15, 15].map((w, i) => (
+    {[55, 20, 15, 20, 15, 15, 15, 15].map((w, i) => (
       <td key={i} className="px-4 sm:px-6 py-4 sm:py-5">
         <div className="h-3 bg-stone-100 rounded-full animate-pulse"
           style={{ width: `${w}%`, margin: i > 0 ? "0 auto" : "0" }} />
@@ -35,13 +38,30 @@ const SkeletonRow = () => (
 
 const Empty = () => (
   <tr>
-    <td colSpan={7} className="py-12 sm:py-16 text-center">
-      <p className="text-3xl text-stone-200 mb-3">∅</p>
-      <p className="text-sm text-stone-400 mb-1">No bug reports found</p>
-      <p className="text-xs text-stone-300">Bug reports will appear here when users submit them</p>
+    <td colSpan={8}>
+      <AdminEmptyState icon={Bug} title="No bug reports found" hint="Bug reports will appear here when users submit them." />
     </td>
   </tr>
 );
+
+const AnimatedStatus = ({ status }) => {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.span
+        key={status}
+        initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={reduceMotion ? undefined : { opacity: 0, scale: 0.98 }}
+        transition={{ duration: reduceMotion ? 0 : 0.14 }}
+        className="block"
+      >
+        {status}
+      </motion.span>
+    </AnimatePresence>
+  );
+};
 
 // Mobile bug card
 const BugMobileCard = ({ bug, index, onClick, onStatusClick, isUpdating }) => (
@@ -67,18 +87,18 @@ const BugMobileCard = ({ bug, index, onClick, onStatusClick, isUpdating }) => (
           onClick={(e) => { e.stopPropagation(); onStatusClick && onStatusClick(bug); }}
           disabled={isUpdating}
           aria-label={`Change status for bug: ${bug.title}`}
-          className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize shrink-0
+          className={`admin-status-change px-2 py-0.5 rounded-full text-[10px] font-medium capitalize shrink-0
                      focus:outline-none focus:ring-2 focus:ring-stone-900 focus:ring-offset-1
                      ${SEGMENT_STYLES[bug.status] || 'bg-stone-100 text-stone-600'}
                      ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          {bug.status}
+          <AnimatedStatus status={bug.status} />
         </button>
       </div>
       <p className="text-xs text-stone-500 truncate">{bug.description}</p>
       {isUpdating && <p className="text-[10px] text-stone-400 mt-1 italic">Saving...</p>}
       <p className="text-[10px] text-stone-400 mt-1">{new Date(bug.createdAt).toLocaleString()}</p>
-      <p className="text-[10px] text-stone-400 mt-1">{bug.reporterName || bug.reporterEmail || '—'}</p>
+      <p className="text-[10px] text-stone-400 mt-1">{bug.reporterName || bug.reporterEmail || 'Not provided'}</p>
     </div>
 
     <div className="text-right shrink-0">
@@ -88,7 +108,7 @@ const BugMobileCard = ({ bug, index, onClick, onStatusClick, isUpdating }) => (
 );
 
 export default function AdminBugs() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   const [bugs, setBugs] = useState([]);
   const [error, setError] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -116,8 +136,7 @@ export default function AdminBugs() {
     setBugs((cur) => cur.map(b => (b._id === id ? { ...b, status: newStatus } : b)));
     
     try {
-      const token = await user.getIdToken();
-      await patchBugStatus(id, newStatus, token);
+      await patchBugStatus(id, newStatus);
       setToast({ message: 'Bug status updated successfully', type: 'success' });
       setMobilePicker(null);
     } catch (err) {
@@ -135,13 +154,12 @@ export default function AdminBugs() {
   };
 
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading) return;
     let mounted = true;
     setLoadingBugs(true);
     (async () => {
       try {
-        const token = await user.getIdToken();
-        const bugsData = await getBugs(token);
+        const bugsData = await getBugs();
         if (mounted) setBugs(bugsData);
       } catch (err) {
         console.error(err);
@@ -151,7 +169,7 @@ export default function AdminBugs() {
       }
     })();
     return () => { mounted = false; };
-  }, [loading, user]);
+  }, [loading]);
 
   // Derived metrics for visualizations
   const statusCounts = bugs.reduce((acc, bug) => {
@@ -169,63 +187,39 @@ export default function AdminBugs() {
   });
 
   return (
-    <div className="min-h-screen bg-stone-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="admin-lux-page" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
         
       `}</style>
 
       <AdminNavbar menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-12">
+      <div className="admin-page-content max-w-6xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-12">
 
-        {/* Page heading */}
-        <div className="mb-8 sm:mb-10">
-          <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-2">Admin</p>
-          <h1 style={{ fontFamily: "Manrope, Inter, sans-serif" }}
-            className="text-3xl sm:text-4xl md:text-5xl text-stone-900">
-            Bug Reports
-          </h1>
-        </div>
+        <AdminPageHeader eyebrow="Admin operations" title="Bug reports" description="Review customer-reported issues and move each report through resolution." />
 
         {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-100 rounded-2xl px-4 sm:px-6 py-4 mb-6 sm:mb-8">
-            <p className="text-sm text-red-600">⚠ {error}</p>
+            <p className="flex items-center gap-2 text-sm text-red-600"><AlertTriangle size={16} />{error}</p>
             <p className="text-xs text-red-400 mt-1">Please try refreshing the page</p>
           </div>
         )}
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-5 mb-8 sm:mb-10">
-          {[
-            { label: "Total Reports", value: bugs.length, icon: "◎" },
-            { label: "Open", value: bugs.filter(b => b.status === "open").length, icon: "⭑" },
-            { label: "Resolved", value: bugs.filter(b => b.status === "resolved").length, icon: "✓" },
-          ].map(({ label, value, icon }) => (
-            <div key={label}
-              className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-7
-                         hover:border-stone-300 hover:shadow-lg transition-all duration-300">
-              <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-4 sm:mb-5">{label}</p>
-              <div className="flex items-end justify-between">
-                {loadingBugs ? (
-                  <div className="h-8 sm:h-9 w-16 bg-stone-100 rounded-xl animate-pulse" />
-                ) : (
-                  <p style={{ fontFamily: "Manrope, Inter, sans-serif" }}
-                    className="text-3xl sm:text-4xl md:text-5xl text-stone-900 leading-none">
-                    {value}
-                  </p>
-                )}
-                <span className="text-xl text-stone-200 mb-0.5">{icon}</span>
-              </div>
-            </div>
-          ))}
+        <div className="mb-8 grid grid-cols-1 gap-3 sm:mb-10 sm:grid-cols-3 sm:gap-4 md:gap-5">
+          {loadingBugs ? [...Array(3)].map((_, index) => <div key={index} className="lux-admin-card h-32 animate-pulse bg-[var(--lux-soft)]" />) : [
+            { label: "Total reports", value: bugs.length, icon: Bug, accent: "bg-[var(--lux-violet)]", hint: "All submitted reports" },
+            { label: "Open", value: bugs.filter(b => b.status === "open").length, icon: AlertTriangle, accent: "bg-[var(--lux-orange)]", hint: "Waiting for review" },
+            { label: "Resolved", value: bugs.filter(b => b.status === "resolved").length, icon: CheckCircle2, accent: "bg-[var(--lux-mint)]", hint: "Closed reports" },
+          ].map((card, index) => <AdminStatCard key={card.label} {...card} index={index} />)}
         </div>
 
-        {/* Insights — status distribution */}
+        {/* Status distribution */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 sm:mb-10">
-          <div className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-7 hover:border-stone-300 hover:shadow-lg transition-all duration-300">
-            <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-4">Insights</p>
-            <h3 style={{ fontFamily: "Manrope, Inter, sans-serif" }} className="text-lg text-stone-900 mb-4">Status distribution</h3>
+          <div className="lux-admin-card shopora-lift p-5 sm:p-7">
+            <p className="lux-eyebrow mb-4">Insights</p>
+            <h3 className="font-heading mb-4 text-lg font-extrabold text-[var(--lux-ink)]">Status distribution</h3>
             <div className="space-y-3">
               {['open', 'in-progress', 'resolved'].map(status => {
                 const count = statusCounts[status] || 0;
@@ -238,8 +232,8 @@ export default function AdminBugs() {
                         <span className="text-xs text-stone-600 capitalize">{status.replace('-', ' ')}</span>
                         <span className="text-xs text-stone-400">{count} ({pct}%)</span>
                       </div>
-                      <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
-                        <div style={{ width: `${pct}%` }} className="h-2 bg-stone-900" />
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--lux-soft)]">
+                        <div style={{ width: `${pct}%` }} className="h-2 bg-[var(--lux-violet)] transition-[width] duration-300" />
                       </div>
                     </div>
                   </div>
@@ -248,9 +242,9 @@ export default function AdminBugs() {
             </div>
           </div>
 
-          <div className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-7 hover:border-stone-300 hover:shadow-lg transition-all duration-300">
-            <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-4">Recent</p>
-            <h3 style={{ fontFamily: "Manrope, Inter, sans-serif" }} className="text-lg text-stone-900 mb-4">Latest reports</h3>
+          <div className="lux-admin-card shopora-lift p-5 sm:p-7">
+            <p className="lux-eyebrow mb-4">Recent</p>
+            <h3 className="font-heading mb-4 text-lg font-extrabold text-[var(--lux-ink)]">Latest reports</h3>
             <div className="space-y-3">
               {bugs.length === 0 && <p className="text-xs text-stone-400">No reports yet</p>}
               {sortedBugs.slice(0, 5).map((bug, i) => (
@@ -270,13 +264,12 @@ export default function AdminBugs() {
         </div>
 
         {/* Bug list card */}
-        <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden
-                        hover:border-stone-300 transition-all duration-300">
+        <div className="lux-admin-table">
           <div className="px-4 sm:px-7 py-4 sm:py-5 border-b border-stone-100
                           flex justify-between items-center">
             <div>
-              <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-0.5">Directory</p>
-              <h2 style={{ fontFamily: "Manrope, Inter, sans-serif" }} className="text-xl text-stone-900">
+              <p className="lux-eyebrow mb-0.5">Directory</p>
+              <h2 className="font-heading text-xl font-extrabold text-[var(--lux-ink)]">
                 All Reports
               </h2>
             </div>
@@ -291,11 +284,7 @@ export default function AdminBugs() {
               ))
             )}
             {!loadingBugs && bugs.length === 0 && (
-              <div className="py-12 text-center">
-                <p className="text-3xl text-stone-200 mb-3">∅</p>
-                <p className="text-sm text-stone-400 mb-1">No bug reports found</p>
-                <p className="text-xs text-stone-300">Bug reports will appear here when users submit them</p>
-              </div>
+              <AdminEmptyState icon={Bug} title="No bug reports found" hint="Bug reports will appear here when users submit them." />
             )}
             {!loadingBugs && sortedBugs.map((bug, index) => (
               <BugMobileCard
@@ -309,7 +298,7 @@ export default function AdminBugs() {
             ))}
 
             {mobilePicker && (
-              <div className="fixed inset-x-0 bottom-0 z-50 bg-white border-t border-stone-200 p-4 md:hidden">
+              <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--lux-line)] bg-[var(--lux-surface)] p-4 md:hidden">
                 <div className="max-w-2xl mx-auto">
                   <p className="text-xs text-stone-400 mb-2">Change status</p>
                   <div className="flex gap-2">
@@ -435,8 +424,7 @@ export default function AdminBugs() {
                             setBugs((cur) => cur.map(b => (b._id === id ? { ...b, status: newStatus } : b)));
                             
                             try {
-                              const token = await user.getIdToken();
-                              await patchBugStatus(id, newStatus, token);
+                              await patchBugStatus(id, newStatus);
                               setToast({ message: 'Bug status updated successfully', type: 'success' });
                             } catch (err) {
                               console.error(err);
@@ -451,8 +439,9 @@ export default function AdminBugs() {
                               });
                             }
                           }}
-                          className={`text-xs border border-stone-200 rounded-full px-3 py-1 bg-white
+                          className={`admin-status-change rounded-full border border-[var(--lux-line)] bg-[var(--lux-surface)] px-3 py-1 text-xs
                                       focus:outline-none focus:ring-2 focus:ring-stone-900 focus:ring-offset-2
+                                      ${SEGMENT_STYLES[bug.status] || ''}
                                       ${updatingIds.has(bug._id) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <option value="open">Open</option>
@@ -470,8 +459,8 @@ export default function AdminBugs() {
                       })}
                     </td>
                     <td className="px-6 py-5 text-center">
-                      <div className="text-xs text-stone-600 mb-1">{bug.reporterName || '—'}</div>
-                      <div className="text-xs text-stone-400">{bug.reporterEmail || '—'}</div>
+                      <div className="text-xs text-stone-600 mb-1">{bug.reporterName || 'Not provided'}</div>
+                      <div className="text-xs text-stone-400">{bug.reporterEmail || 'Not provided'}</div>
                     </td>
                     <td className="px-6 py-5 text-center">
                       {bug.pageUrl ? (
@@ -479,7 +468,7 @@ export default function AdminBugs() {
                           {bug.pageUrl.split('/').pop() || 'page'}
                         </span>
                       ) : (
-                        <span className="text-xs text-stone-300">—</span>
+                        <span className="text-xs text-stone-300">Not provided</span>
                       )}
                     </td>
                     <td className="px-6 py-5 text-center">

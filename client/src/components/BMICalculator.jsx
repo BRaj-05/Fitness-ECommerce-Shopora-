@@ -42,13 +42,13 @@ const BMICalculator = () => {
 
   return (
     <div
-      className={`transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-7"
+      className={`health-calculator health-calculator-bmi transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-7"
         }`}
     >
       {/* Header */}
-      <div className="mb-8 sm:mb-16">
+      <div className="mb-7">
         <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-3">
-          Health Tools
+          Body Composition
         </p>
         <h1 className="font-heading text-2xl md:text-3xl text-slate-950 dark:text-white
                        leading-[1.05] tracking-tight">
@@ -61,7 +61,7 @@ const BMICalculator = () => {
 
         {/* ── Form Section ── */}
         <div
-          className={`lg:col-span-7 bg-white border rounded-2xl p-5 sm:p-8 md:p-10
+          className={`health-form-card lg:col-span-7 border rounded-2xl p-5 sm:p-8 md:p-10
                       transition-all duration-500 ease-out
                       ${result
               ? "border-stone-300 shadow-md scale-[1.01] sm:scale-[1.02]"
@@ -86,8 +86,8 @@ const BMICalculator = () => {
                                 uppercase transition-all duration-300 border min-h-11
                                 active:scale-[0.98]
                                 ${formData.gender === g
-                        ? "bg-indigo-600 border-indigo-600 text-white"
-                        : "bg-transparent border-stone-200 text-stone-500 hover:border-indigo-400"
+                        ? "border-[var(--lux-violet)] bg-[var(--lux-violet)] text-white"
+                        : "border-[var(--lux-line)] bg-transparent text-[var(--lux-muted)] hover:border-[var(--lux-violet)]"
                       }`}
                   >
                     {g}
@@ -170,7 +170,7 @@ const BMICalculator = () => {
 
             <button
               type="submit"
-              className="w-full bg-indigo-600 text-white text-sm tracking-widest uppercase
+              className="health-submit w-full text-white text-sm tracking-widest uppercase
                          py-4 rounded-full hover:bg-indigo-700 transition-colors shadow-sm
                          min-h-13 active:scale-[0.98]"
             >
@@ -182,11 +182,11 @@ const BMICalculator = () => {
         {/* ── Results Section ── */}
         <div className="lg:col-span-5">
           <div
-            className={`rounded-2xl p-6 sm:p-8 lg:p-10 flex flex-col justify-center
+            className={`health-result-panel ${result ? "health-result-panel--active" : "health-result-panel--empty"} rounded-2xl p-6 sm:p-8 lg:p-10 flex flex-col justify-center
                         transition-all duration-500 min-h-70 sm:min-h-80 lg:h-full
                         ${result
-                ? "bg-gradient-to-br from-slate-950 to-indigo-950 text-white"
-                : "bg-stone-100 border border-stone-200 text-stone-400"
+                ? "text-white"
+                : "border text-stone-400"
               }`}
           >
             {result ? (

@@ -2,8 +2,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { signOut } from "firebase/auth";
-import { auth } from "../auth/firebase";
+import SiteFooter from "../components/SiteFooter";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Target, Zap } from "lucide-react";
+import { useAuth } from "../auth/useAuth";
+import { beginFitnessPlan } from "../utils/fitnessPlanTracker";
 
 const PLANS = [
   {
@@ -42,8 +44,10 @@ const PLANS = [
 
 export default function MobilityRecoveryPlans() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [visible, setVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [startingPlan, setStartingPlan] = useState("");
 
   useEffect(() => {
     document.title = "Mobility & Recovery Plans — Shopora";
@@ -53,12 +57,19 @@ export default function MobilityRecoveryPlans() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    await logout();
     navigate("/");
   };
 
+  const handleStartPlan = async (plan) => {
+    if (startingPlan) return;
+    setStartingPlan(plan.name);
+    const activePlan = await beginFitnessPlan(plan, "Mobility & Recovery", Boolean(user));
+    navigate("/tracker", { state: { activePlan } });
+  };
+
   return (
-    <div className="min-h-screen bg-stone-50 font-sans">
+    <div className="shopora-plan-page min-h-screen bg-stone-50 font-sans">
       <style>{`
         
         .fade-in { opacity:0; transform:translateY(16px); transition:opacity .5s ease,transform .5s ease; }
@@ -77,8 +88,8 @@ export default function MobilityRecoveryPlans() {
       />
 
       {/* Hero */}
-      <section className="bg-stone-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-12 sm:py-16 md:py-20">
+      <section className="shopora-plan-hero shopora-plan-hero--recovery bg-stone-900 text-white">
+        <div className="shopora-wide-shell shopora-plan-hero-inner py-12 sm:py-16 md:py-20">
           <div className={`fade-in d1 ${visible ? "show" : ""}`}>
             {/* Back link — below heading on mobile, inline on sm+ */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
@@ -98,7 +109,7 @@ export default function MobilityRecoveryPlans() {
                            transition-colors inline-flex items-center gap-2 self-start
                            border border-stone-700 px-4 py-2 rounded-full sm:border-0 sm:p-0"
               >
-                ← Back to Home
+                <ArrowLeft size={15} /> Back to Home
               </button>
             </div>
           </div>
@@ -106,7 +117,7 @@ export default function MobilityRecoveryPlans() {
       </section>
 
       {/* Plans Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-10 sm:py-16 space-y-12 sm:space-y-16">
+      <div className="shopora-wide-shell shopora-plan-content space-y-12 py-10 sm:space-y-16 sm:py-16">
 
         <section>
           <div className={`fade-in d1 ${visible ? "show" : ""} mb-6 sm:mb-8`}>
@@ -117,10 +128,10 @@ export default function MobilityRecoveryPlans() {
           </div>
 
           {/* 1-col on mobile, 2-col on md+ */}
-          <div className={`fade-in d2 ${visible ? "show" : ""} grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5`}>
+          <div className={`fade-in d2 ${visible ? "show" : ""} shopora-program-grid`}>
             {PLANS.map((plan, i) => (
               <div key={i}
-                className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-7 flex flex-col gap-3 sm:gap-4
+                className="shopora-program-card bg-white border border-stone-200 rounded-2xl p-5 sm:p-7 flex flex-col gap-3 sm:gap-4
                            transition-all duration-300 hover:shadow-lg hover:border-stone-300">
                 <div className="flex items-center justify-between">
                   {plan.tag ? (
@@ -145,15 +156,13 @@ export default function MobilityRecoveryPlans() {
                 <ul className="space-y-1.5 sm:space-y-2">
                   {plan.features.map((f, j) => (
                     <li key={j} className="text-xs flex items-start gap-2 text-stone-500">
-                      <span className="text-stone-900 shrink-0 mt-0.5">✓</span> {f}
+                      <Check size={14} className="mt-0.5 shrink-0 text-[var(--lux-mint)]" /> {f}
                     </li>
                   ))}
                 </ul>
 
-                <button className="text-xs py-2.5 rounded-full transition-all mt-1 border border-stone-300
-                                   text-stone-700 hover:bg-stone-900 hover:text-white hover:border-stone-900
-                                   min-h-10">
-                  Start Plan →
+                <button type="button" onClick={() => handleStartPlan(plan)} disabled={Boolean(startingPlan)} className="fitness-plan-action">
+                  {startingPlan === plan.name ? "Starting plan..." : <>Start Plan <ArrowRight size={15} className="ml-2 inline" /></>}
                 </button>
               </div>
             ))}
@@ -167,14 +176,14 @@ export default function MobilityRecoveryPlans() {
             <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl text-stone-900 mb-6 sm:mb-8">
               The science behind the plan
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+            <div className="shopora-method-grid grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
               {[
-                { icon: "◎", title: "Fascial Release", desc: "Targeted myofascial release techniques restore tissue elasticity and reduce chronic tension patterns." },
-                { icon: "⚡", title: "Neural Mobility", desc: "Nerve gliding exercises improve neural mobility, reducing pain and restoring full range of motion." },
-                { icon: "✓", title: "Movement Quality", desc: "Corrective exercise progressions rewire motor patterns for pain-free, efficient movement." },
+                { Icon: Target, title: "Fascial Release", desc: "Targeted myofascial release techniques restore tissue elasticity and reduce chronic tension patterns." },
+                { Icon: Zap, title: "Neural Mobility", desc: "Nerve gliding exercises improve neural mobility, reducing pain and restoring full range of motion." },
+                { Icon: CheckCircle2, title: "Movement Quality", desc: "Corrective exercise progressions rewire motor patterns for pain-free, efficient movement." },
               ].map((tip, i) => (
-                <div key={i} className="bg-stone-100 rounded-2xl p-5 sm:p-7">
-                  <span className="text-2xl mb-3 sm:mb-4 block">{tip.icon}</span>
+                <div key={i} className="shopora-method-card bg-stone-100 rounded-2xl p-5 sm:p-7">
+                  <tip.Icon className="mb-3 text-[var(--lux-mint)] sm:mb-4" size={22} />
                   <h3 className="font-heading text-lg text-stone-900 mb-2">{tip.title}</h3>
                   <p className="text-sm text-stone-500 leading-relaxed">{tip.desc}</p>
                 </div>
@@ -184,21 +193,7 @@ export default function MobilityRecoveryPlans() {
         </section>
       </div>
 
-      <footer className="border-t border-stone-200 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-7 sm:py-8
-                        flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4">
-          <span className="font-heading text-lg text-stone-900">Shopora</span>
-          <p className="text-xs text-stone-400 text-center">© 2026 Shopora. Fitness commerce & tools.</p>
-          <div className="flex gap-4 sm:gap-5">
-            {["Privacy", "Terms", "Support"].map(l => (
-              <button key={l}
-                className="text-xs text-stone-400 hover:text-stone-600 transition-colors min-h-9 px-1">
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

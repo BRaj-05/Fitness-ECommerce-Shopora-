@@ -1,13 +1,11 @@
 const express = require("express");
+const { getFallbackExercises } = require("../data/exerciseFallbackCatalog");
+
 const router = express.Router();
-
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || "exercisedb.p.rapidapi.com";
+const CACHE_TTL_MS = 30 * 60 * 1000;
+const exerciseCache = new Map();
 
-/**
- * Maps UI category names to RapidAPI ExerciseDB body parts.
- * Some UI categories map to multiple API body parts.
- */
 const CATEGORY_MAPPING = {
   chest: ["chest"],
   back: ["back"],
@@ -18,170 +16,98 @@ const CATEGORY_MAPPING = {
   legs: ["upper legs", "lower legs"],
 };
 
-/**
- * Fetches exercises from RapidAPI for a specific body part.
- */
-async function fetchExercisesFromAPI(bodyPart) {
-  const response = await fetch(
-    `https://${RAPIDAPI_HOST}/exercises/bodyPart/${encodeURIComponent(bodyPart)}`,
-    {
-      method: "GET",
-      headers: {
-        "x-rapidapi-key": RAPIDAPI_KEY,
-        "x-rapidapi-host": RAPIDAPI_HOST,
+async function fetchExercisesFromAPI(bodyPart, apiKey) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const response = await fetch(
+      `https://${RAPIDAPI_HOST}/exercises/bodyPart/${encodeURIComponent(bodyPart)}?limit=24&offset=0`,
+      {
+        method: "GET",
+        headers: {
+          "x-rapidapi-key": apiKey,
+          "x-rapidapi-host": RAPIDAPI_HOST,
+        },
+        signal: controller.signal,
       },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Exercise provider returned ${response.status}`);
     }
-  );
 
-  if (!response.ok) {
-    throw new Error(`RapidAPI returned status ${response.status} for bodyPart: ${bodyPart}`);
+    const payload = await response.json();
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.exercises)) return payload.exercises;
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return response.json();
 }
 
-/**
- * Normalizes an exercise object to ensure consistent media fields.
- * Inspects the raw API response and extracts available media.
- * 
- * RapidAPI ExerciseDB Response Fields (expected):
- * - gifUrl: Animation GIF URL (primary media - expected from /exercises/bodyPart endpoint)
- * - image: Fallback image URL (alternative field name)
- * - imageUrl: Alternative image field name
- * - videoUrl: Video URL if available
- * 
- * Note: If the API does not provide any media fields, the frontend will gracefully
- * show a placeholder (🏋️ icon) without breaking the UI. This is acceptable as the
- * exercise metadata (name, target, equipment) is still valuable for users.
- */
-function normalizeExercise(ex, isFirstExercise = false) {
-  // Log the raw API response structure on first exercise of each request
-  // This helps diagnose if media fields are present in the API response
-  if (isFirstExercise) {
-    console.log("\n[ExerciseDB] Raw API Response - Available Fields:");
-    console.log("  Keys:", Object.keys(ex).sort());
-    if (process.env.NODE_ENV === 'development') {
-      // Only log full object in development for debugging
-      console.log("  Full Object:", JSON.stringify(ex, null, 2));
-    }
-    console.log("  gifUrl:", ex.gifUrl ? "✅ Present" : "❌ Missing");
-    console.log("  image:", ex.image ? "✅ Present" : "❌ Missing");
-    console.log("  imageUrl:", ex.imageUrl ? "✅ Present" : "❌ Missing");
-    console.log("  videoUrl:", ex.videoUrl ? "✅ Present" : "❌ Missing");
-    console.log("");
-  }
-
+function normalizeExercise(exercise) {
   return {
-    id: ex.id,
-    name: ex.name || "",
-    bodyPart: ex.bodyPart || "",
-    target: ex.target || "",
-    equipment: ex.equipment || "",
-    // Try multiple possible field names for media URLs
-    gifUrl: ex.gifUrl || ex.image || ex.imageUrl || null,
-    imageUrl: ex.image || ex.imageUrl || null,
-    videoUrl: ex.videoUrl || null,
+    id: String(exercise.id || exercise.exerciseId || exercise.name),
+    name: exercise.name || "Movement",
+    bodyPart: exercise.bodyPart || "",
+    target: exercise.target || "",
+    equipment: exercise.equipment || "",
+    gifUrl: exercise.gifUrl || exercise.image || exercise.imageUrl || null,
+    imageUrl: exercise.image || exercise.imageUrl || null,
+    videoUrl: exercise.videoUrl || null,
   };
 }
 
-/**
- * Deduplicates exercises by ID.
- */
 function deduplicateExercises(exercises) {
   const seen = new Set();
-  return exercises.filter((ex) => {
-    if (seen.has(ex.id)) return false;
-    seen.add(ex.id);
+  return exercises.filter((exercise) => {
+    if (!exercise.id || seen.has(exercise.id)) return false;
+    seen.add(exercise.id);
     return true;
   });
 }
 
-/**
- * GET /api/exercises/:category
- * Fetches exercises for a specific UI category.
- * Handles category mapping and deduplication.
- * 
- * Supported categories:
- * - chest, back, arms, shoulders, legs, abs, cardio
- * 
- * Returns: Array of exercises with normalized media fields
- */
-router.get("/:category", async (req, res) => {
-  const { category } = req.params;
+function cacheExercises(category, exercises) {
+  exerciseCache.set(category, { exercises, expiresAt: Date.now() + CACHE_TTL_MS });
+  return exercises;
+}
 
-  // Validate input
-  if (!CATEGORY_MAPPING[category.toLowerCase()]) {
+router.get("/:category", async (req, res) => {
+  const category = String(req.params.category || "").toLowerCase();
+  const bodyParts = CATEGORY_MAPPING[category];
+
+  if (!bodyParts) {
     return res.status(400).json({
       error: `Invalid category. Supported: ${Object.keys(CATEGORY_MAPPING).join(", ")}`,
     });
   }
 
-  // Check if API key is configured
-  if (!RAPIDAPI_KEY) {
-    return res.status(500).json({
-      error: "RapidAPI key not configured. Please set RAPIDAPI_KEY in .env",
-    });
+  const cached = exerciseCache.get(category);
+  if (cached?.expiresAt > Date.now()) {
+    return res.json(cached.exercises);
+  }
+
+  const fallback = getFallbackExercises(category);
+  const apiKey = process.env.RAPIDAPI_KEY?.trim();
+  if (!apiKey) {
+    return res.json(cacheExercises(category, fallback));
   }
 
   try {
-    const bodyParts = CATEGORY_MAPPING[category.toLowerCase()];
-    const allExercises = [];
-
-    // Fetch exercises for all mapped body parts
-    for (const bodyPart of bodyParts) {
-      try {
-        const exercises = await fetchExercisesFromAPI(bodyPart);
-        allExercises.push(...exercises);
-      } catch (error) {
-        console.warn(
-          `⚠️ Failed to fetch exercises for bodyPart "${bodyPart}": ${error.message}`
-        );
-        // Continue with other body parts even if one fails
-      }
-    }
-
-    if (allExercises.length === 0) {
-      console.warn(`No exercises found for category "${category}" (bodyParts: ${bodyParts.join(", ")})`);
-      return res.json([]);
-    }
-
-    // Normalize all exercises (log first one to inspect raw API structure)
-    const normalizedExercises = allExercises.map((ex, idx) => 
-      normalizeExercise(ex, idx === 0)
+    const results = await Promise.allSettled(
+      bodyParts.map((bodyPart) => fetchExercisesFromAPI(bodyPart, apiKey)),
     );
-
-    // Deduplicate by ID
-    const deduplicatedExercises = deduplicateExercises(normalizedExercises);
-
-    // Log the normalized response for debugging
-    if (deduplicatedExercises.length > 0) {
-      const firstEx = deduplicatedExercises[0];
-      console.log("\n[ExerciseDB] First Normalized Exercise (ready for client):");
-      console.log("  Name:", firstEx.name);
-      
-      if (firstEx.gifUrl) {
-        console.log("  gifUrl: ✅ Present");
-        console.log("    Value:", firstEx.gifUrl.substring(0, 80) + (firstEx.gifUrl.length > 80 ? "..." : ""));
-        console.log("    Starts with http:", firstEx.gifUrl.startsWith("http") ? "✅ Yes" : "❌ No");
-      } else {
-        console.log("  gifUrl: ❌ null/empty");
-        console.log("    imageUrl fallback:", firstEx.imageUrl ? `Present: ${firstEx.imageUrl.substring(0, 60)}...` : "null");
-      }
-      
-      console.log("  imageUrl:", firstEx.imageUrl ? `✅ Present` : "❌ null");
-      console.log("  videoUrl:", firstEx.videoUrl ? `✅ Present` : "❌ null");
-      console.log("");
-    }
-
-    console.log(
-      `✅ Fetched ${deduplicatedExercises.length} unique exercises for category "${category}"`
+    const remoteExercises = results.flatMap((result) =>
+      result.status === "fulfilled" ? result.value : [],
     );
-    res.json(deduplicatedExercises);
+    const normalized = deduplicateExercises(remoteExercises.map(normalizeExercise));
+
+    return res.json(cacheExercises(category, normalized.length ? normalized : fallback));
   } catch (error) {
-    console.error(`❌ Error fetching exercises for category "${category}":`, error);
-    res.status(500).json({
-      error: "Failed to fetch exercises. Please try again later.",
-    });
+    console.warn(`Exercise provider unavailable for ${category}: ${error.message}`);
+    return res.json(cacheExercises(category, fallback));
   }
 });
 

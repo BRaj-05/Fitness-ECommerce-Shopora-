@@ -1,4 +1,5 @@
 import {
+  createElement,
   useCallback,
   useEffect,
   useMemo,
@@ -12,6 +13,10 @@ import {
 import Navbar from "../components/Navbar";
 import CartDrawer from "../components/CartDrawer";
 import ProductVisual from "../components/ProductVisual";
+import ShoporaLoader from "../components/ShoporaLoader";
+import SiteFooter from "../components/SiteFooter";
+import SEOHead from "../components/SEOHead";
+import { ArrowRight, Check, History, Minus, PackageCheck, Plus, ShieldCheck, Star } from "lucide-react";
 
 import { useAuth } from "../auth/useAuth";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
@@ -196,6 +201,42 @@ export default function ProductPage() {
       products,
       productId,
     ]);
+
+  const productSeo = useMemo(() => {
+    if (!product) return [];
+    const siteUrl = String(import.meta.env.VITE_SITE_URL || window.location.origin).replace(/\/$/, "");
+    const productUrl = `${siteUrl}/product/${product.productId || product.id}`;
+    const image = product.image ? new URL(product.image, `${siteUrl}/`).toString() : `${siteUrl}/logo.png`;
+    return [
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.name,
+        description: product.description || product.name,
+        image: [image],
+        sku: String(product.productId || product.id),
+        brand: { "@type": "Brand", name: product.brand || "Shopora" },
+        offers: {
+          "@type": "Offer",
+          url: productUrl,
+          priceCurrency: "INR",
+          price: Number(product.price || 0).toFixed(2),
+          availability: soldOut ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+          itemCondition: "https://schema.org/NewCondition",
+        },
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+          { "@type": "ListItem", position: 2, name: "Shop", item: `${siteUrl}/shop` },
+          { "@type": "ListItem", position: 3, name: product.category || "Products", item: `${siteUrl}/shop?category=${encodeURIComponent(product.category || "All")}` },
+          { "@type": "ListItem", position: 4, name: product.name, item: productUrl },
+        ],
+      },
+    ];
+  }, [product, soldOut]);
 
   const loadCart =
     useCallback(async (
@@ -641,14 +682,15 @@ export default function ProductPage() {
           cartCount={0}
         />
 
-        <main className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-10">
-          <div className="aspect-square animate-pulse rounded-3xl bg-stone-200 dark:bg-slate-800" />
+        <main className="shopora-wide-shell product-detail-layout grid gap-8 py-12 lg:grid-cols-2">
+          <div className="shopora-skeleton aspect-square rounded-2xl" />
 
           <div className="space-y-5 py-5">
-            <div className="h-3 w-32 animate-pulse rounded bg-stone-200 dark:bg-slate-800" />
-            <div className="h-12 w-3/4 animate-pulse rounded-xl bg-stone-200 dark:bg-slate-800" />
-            <div className="h-8 w-40 animate-pulse rounded bg-stone-200 dark:bg-slate-800" />
-            <div className="h-28 animate-pulse rounded-2xl bg-stone-200 dark:bg-slate-800" />
+            <ShoporaLoader label="Loading product details" className="text-[var(--lux-muted)]" />
+            <div className="shopora-skeleton h-3 w-32 rounded" />
+            <div className="shopora-skeleton h-12 w-3/4 rounded-xl" />
+            <div className="shopora-skeleton h-8 w-40 rounded" />
+            <div className="shopora-skeleton h-28 rounded-xl" />
           </div>
         </main>
       </div>
@@ -692,6 +734,14 @@ export default function ProductPage() {
 
   return (
     <div className="min-h-screen bg-[var(--lux-bg)] text-[var(--lux-ink)]">
+      <SEOHead
+        title={`${product.name} | Shopora`}
+        description={product.description || `Shop ${product.name} from ${product.brand || "Shopora"}.`}
+        canonicalPath={`/product/${product.productId || product.id}`}
+        image={product.image}
+        type="product"
+        jsonLd={productSeo}
+      />
       <Navbar
         variant="home"
         cartCount={
@@ -703,16 +753,16 @@ export default function ProductPage() {
       />
 
       <main className="shopora-product-hero-enter">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-10">
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/shop")
-            }
-            className="mb-7 text-sm font-semibold text-stone-500 transition hover:text-stone-950 dark:text-slate-400 dark:hover:text-white"
-          >
-            ← Back to shop
-          </button>
+        <div className="shopora-wide-shell py-8 sm:py-12">
+          <nav aria-label="Breadcrumb" className="mb-7 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--lux-muted)]">
+            <button type="button" onClick={() => navigate("/")} className="hover:text-[var(--lux-ink)]">Home</button>
+            <span aria-hidden="true">/</span>
+            <button type="button" onClick={() => navigate("/shop")} className="hover:text-[var(--lux-ink)]">Shop</button>
+            <span aria-hidden="true">/</span>
+            <button type="button" onClick={() => navigate(`/shop?category=${encodeURIComponent(product.category || "All")}`)} className="hover:text-[var(--lux-ink)]">{product.category || "Products"}</button>
+            <span aria-hidden="true">/</span>
+            <span className="max-w-64 truncate text-[var(--lux-ink)]" aria-current="page">{product.name}</span>
+          </nav>
 
           {error && (
             <div
@@ -723,7 +773,7 @@ export default function ProductPage() {
             </div>
           )}
 
-          <section className="grid gap-8 lg:grid-cols-2 lg:gap-14">
+          <section className="shopora-content-reveal grid gap-8 lg:grid-cols-2 lg:gap-14">
             <div className="lux-product-card self-start">
               <div className="aspect-square">
                 <ProductVisual
@@ -758,7 +808,7 @@ export default function ProductPage() {
                 }
               </p>
 
-              <h1 className="font-heading mt-2 text-4xl font-extrabold leading-tight tracking-[-0.035em] sm:text-5xl">
+              <h1 className="font-heading mt-2 text-4xl font-extrabold leading-tight tracking-normal sm:text-5xl">
                 {
                   product.name
                 }
@@ -793,7 +843,7 @@ export default function ProductPage() {
 
               <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
                 <span className="font-semibold text-amber-600">
-                  ★{" "}
+                  <Star size={15} className="mr-1 inline fill-current" />{" "}
                   {Number(
                     product.rating ||
                       0,
@@ -864,9 +914,9 @@ export default function ProductPage() {
                           ),
                       )
                     }
-                    className="grid h-11 w-11 place-items-center text-lg disabled:opacity-30"
-                  >
-                    −
+                  className="grid h-11 w-11 place-items-center text-lg disabled:opacity-30"
+                >
+                    <Minus size={17} />
                   </button>
 
                   <span className="min-w-12 text-center text-sm font-bold">
@@ -893,7 +943,7 @@ export default function ProductPage() {
                     }
                     className="grid h-11 w-11 place-items-center text-lg disabled:opacity-30"
                   >
-                    +
+                    <Plus size={17} />
                   </button>
                 </div>
               </div>
@@ -912,10 +962,10 @@ export default function ProductPage() {
                         true,
                     })
                   }
-                  className="shopora-button-press min-h-13 rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] px-6 text-sm font-bold text-[var(--lux-ink)] hover:bg-[var(--lux-soft)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shopora-button-press flex min-h-13 items-center justify-center rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] px-6 text-sm font-bold text-[var(--lux-ink)] hover:bg-[var(--lux-soft)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {adding
-                    ? "Adding…"
+                    ? <ShoporaLoader label="Adding" size={16} />
                     : soldOut
                       ? "Out of stock"
                       : "Add to cart"}
@@ -936,24 +986,28 @@ export default function ProductPage() {
                         true,
                     })
                   }
-                  className="shopora-button-press min-h-13 rounded-xl bg-[var(--lux-ink)] px-6 text-sm font-bold text-[var(--lux-bg)] shadow-lg shadow-stone-950/10 hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shopora-button-press flex min-h-13 items-center justify-center rounded-xl bg-[var(--lux-ink)] px-6 text-sm font-bold text-[var(--lux-bg)] shadow-lg shadow-stone-950/10 hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {buying
-                    ? "Preparing checkout…"
+                    ? <ShoporaLoader label="Preparing checkout" size={16} />
                     : soldOut
                       ? "Out of stock"
                       : "Buy now"}
                 </button>
               </div>
 
-              <div className="mt-6 grid gap-3 text-xs text-stone-500 dark:text-slate-400 sm:grid-cols-2">
-                <div className="rounded-2xl border border-stone-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                  Stock is reserved when an authenticated customer adds an item to cart.
-                </div>
-
-                <div className="rounded-2xl border border-stone-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                  Payment is completed through Razorpay after address and order review.
-                </div>
+              <div className="mt-6 grid gap-3 text-xs sm:grid-cols-3">
+                {[
+                  [ShieldCheck, "Secure payment", "Razorpay is verified by the server."],
+                  [PackageCheck, "Inventory verified", "Availability includes reserved stock."],
+                  [History, "Order history", "Paid orders remain available in your account."],
+                ].map(([Icon, title, copy]) => (
+                  <div key={title} className="rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] p-4">
+                    {createElement(Icon, { size: 17, className: "text-[var(--lux-mint)]" })}
+                    <p className="mt-3 font-bold text-[var(--lux-ink)]">{title}</p>
+                    <p className="mt-1 leading-5 text-[var(--lux-muted)]">{copy}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
@@ -1027,7 +1081,7 @@ export default function ProductPage() {
                           }
                           className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
                         >
-                          ✓{" "}
+                          <Check size={14} className="mr-1 inline text-[var(--lux-mint)]" />{" "}
                           {
                             highlight
                           }
@@ -1117,7 +1171,7 @@ export default function ProductPage() {
                   }
                   className="text-xs font-bold text-stone-500 hover:text-stone-950 dark:hover:text-white"
                 >
-                  View all →
+                  View all <ArrowRight size={14} className="ml-1 inline" />
                 </button>
               </div>
 
@@ -1181,6 +1235,8 @@ export default function ProductPage() {
           )}
         </div>
       </main>
+
+      <SiteFooter />
 
       <CartDrawer
         isOpen={cartOpen}

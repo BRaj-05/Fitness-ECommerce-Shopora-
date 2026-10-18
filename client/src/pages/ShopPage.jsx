@@ -9,6 +9,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import CartDrawer from "../components/CartDrawer";
 import ProductVisual from "../components/ProductVisual";
+import ShoporaLoader from "../components/ShoporaLoader";
+import SiteFooter from "../components/SiteFooter";
 
 import { useAuth } from "../auth/useAuth";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
@@ -86,12 +88,29 @@ export default function ShopPage() {
   useEffect(() => {
     const requestedType = searchParams.get("type");
     if (requestedType && PRODUCT_TYPES.includes(requestedType)) setType(requestedType);
+    const requestedCategory = searchParams.get("category");
+    if (requestedCategory && CATEGORIES.includes(requestedCategory)) setCategory(requestedCategory);
+    const requestedQuery = searchParams.get("q");
+    if (requestedQuery) setQuery(requestedQuery);
   }, [searchParams]);
 
   const [cartOpen, setCartOpen] =
     useState(false);
   const [addingId, setAddingId] =
     useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    if (!filtersOpen) return undefined;
+    const previous = document.body.style.overflow;
+    const close = (event) => event.key === "Escape" && setFiltersOpen(false);
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", close);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", close);
+    };
+  }, [filtersOpen]);
 
   const cartCount = cart.reduce(
     (sum, item) => sum + item.qty,
@@ -454,8 +473,17 @@ export default function ShopPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
-          <div className="lux-filter-rail">
+        <section className="shopora-wide-shell py-8">
+          <div className="mb-4 flex items-center justify-between lg:hidden">
+            <button type="button" onClick={() => setFiltersOpen(true)} className="shopora-btn shopora-btn-secondary">Filters</button>
+            <span className="text-xs font-semibold text-[var(--lux-muted)]">{filteredProducts.length} results</span>
+          </div>
+          {filtersOpen && <button type="button" aria-label="Close filters" onClick={() => setFiltersOpen(false)} className="shopora-filter-backdrop lg:hidden" />}
+          <div className={`lux-filter-rail shopora-filter-panel ${filtersOpen ? "is-open" : ""}`}>
+            <div className="mb-4 flex items-center justify-between lg:hidden">
+              <div><p className="lux-eyebrow">REFINE CATALOG</p><p className="mt-1 font-heading text-xl font-extrabold">Filters</p></div>
+              <button type="button" onClick={() => setFiltersOpen(false)} className="shopora-btn shopora-btn-ghost">Done</button>
+            </div>
             <div className="shopora-quick-types mb-4">
               {PRODUCT_TYPES.map((value) => (
                 <button key={value} type="button" onClick={() => setType(value)} className={`shopora-quick-type ${type === value ? "shopora-quick-type-active" : ""}`}>
@@ -539,33 +567,22 @@ export default function ShopPage() {
               </select>
             </div>
 
-            {(query ||
-              category !== "All" ||
-              type !== "All") && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  setCategory("All");
-                  setType("All");
-                }}
-                className="mt-3 text-xs font-semibold text-stone-500 underline underline-offset-4 hover:text-stone-950 dark:hover:text-white"
-              >
-                Clear filters
-              </button>
+            {(query || category !== "All" || type !== "All") && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {query && <button type="button" onClick={() => setQuery("")} className="shopora-filter-chip">Search: {query} <span aria-hidden="true">x</span></button>}
+                {type !== "All" && <button type="button" onClick={() => setType("All")} className="shopora-filter-chip">{type} <span aria-hidden="true">x</span></button>}
+                {category !== "All" && <button type="button" onClick={() => setCategory("All")} className="shopora-filter-chip">{category} <span aria-hidden="true">x</span></button>}
+                <button type="button" onClick={() => { setQuery(""); setCategory("All"); setType("All"); }} className="min-h-9 px-2 text-xs font-bold text-[var(--lux-muted)] hover:text-[var(--lux-ink)]">Clear all</button>
+              </div>
             )}
           </div>
 
           {loading && (
-            <div className="grid grid-cols-1 gap-5 py-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.from({
-                length: 8,
-              }).map((_, index) => (
-                <div
-                  key={index}
-                  className="h-[410px] animate-pulse rounded-3xl border border-stone-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-                />
-              ))}
+            <div className="py-8">
+              <ShoporaLoader label="Loading the Shopora catalog" className="mb-5 text-[var(--lux-muted)]" />
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                {Array.from({ length: 8 }).map((_, index) => <div key={index} className="shopora-skeleton h-[410px] rounded-2xl border border-[var(--lux-line)]" />)}
+              </div>
             </div>
           )}
 
@@ -605,20 +622,20 @@ export default function ShopPage() {
             filteredProducts.length ===
               0 && (
               <div className="mt-8 rounded-3xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900">
-                <h2 className="font-heading text-2xl font-extrabold">
-                  No matching products
-                </h2>
-
-                <p className="mt-2 text-sm text-stone-500 dark:text-slate-400">
-                  Try another product type or search term.
-                </p>
+                <p className="lux-eyebrow">NO MATCHES YET</p>
+                <h2 className="mt-3 font-heading text-2xl font-extrabold">Your next essential is still out there.</h2>
+                <p className="mx-auto mt-2 max-w-md text-sm text-stone-500 dark:text-slate-400">We could not find gear matching those filters.</p>
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
+                  <button type="button" onClick={() => { setQuery(""); setCategory("All"); setType("All"); }} className="shopora-btn shopora-btn-primary">Clear filters</button>
+                  <button type="button" onClick={() => navigate("/shop")} className="shopora-btn shopora-btn-secondary">Browse everything</button>
+                </div>
               </div>
             )}
 
           {!loading &&
             !error &&
             filteredProducts.length > 0 && (
-              <div className="grid grid-cols-1 gap-5 py-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="shopora-content-reveal grid grid-cols-1 gap-5 py-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {filteredProducts.map(
                   (product) => {
                     const available =
@@ -669,7 +686,7 @@ export default function ShopPage() {
                                 }
                                 className="mt-1 block text-left"
                               >
-                                <h2 className="line-clamp-2 font-heading text-lg font-extrabold leading-tight transition group-hover:text-indigo-600">
+                                <h2 className="line-clamp-2 font-heading text-lg font-extrabold leading-tight transition group-hover:text-[var(--lux-orange)]">
                                   {
                                     product.name
                                   }
@@ -768,11 +785,11 @@ export default function ShopPage() {
                                   product,
                                 )
                               }
-                              className="min-h-11 rounded-xl bg-[var(--lux-ink)] px-3 text-xs font-bold text-[var(--lux-bg)] transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="shopora-quick-action flex min-h-11 items-center justify-center rounded-xl bg-[var(--lux-ink)] px-3 text-xs font-bold text-[var(--lux-bg)] transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               {addingId ===
                               product.productId
-                                ? "Adding…"
+                                ? <ShoporaLoader label="Adding" size={15} />
                                 : soldOut
                                   ? "Sold out"
                                   : "Add to cart"}
@@ -787,6 +804,8 @@ export default function ShopPage() {
             )}
         </section>
       </main>
+
+      <SiteFooter />
 
       <CartDrawer
         isOpen={cartOpen}

@@ -135,7 +135,7 @@ export default function PromoCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="mx-auto grid min-h-[520px] max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_.9fr] lg:px-10">
+      <div className="shopora-wide-shell grid min-h-[520px] items-center gap-10 py-12 lg:grid-cols-[1fr_.9fr]">
         <div className="shopora-product-hero-enter">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -144,7 +144,7 @@ export default function PromoCarousel() {
             </p>
           </div>
 
-          <h1 className="font-heading mt-5 max-w-2xl text-5xl font-extrabold leading-[0.95] tracking-[-0.05em] sm:text-6xl lg:text-7xl">
+          <h1 className="font-heading mt-5 max-w-2xl text-5xl font-extrabold leading-[0.95] tracking-normal sm:text-6xl lg:text-7xl">
             {slide.title}
           </h1>
 

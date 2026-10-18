@@ -1,26 +1,23 @@
+import { ArrowRight, Home } from "lucide-react";
 import { Link } from "react-router-dom";
+import BrandLogo from "../components/BrandLogo";
+import ShoporaAmbientBackground from "../components/ShoporaAmbientBackground";
 
-const NotFound = () => {
+export default function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center text-center px-5 py-12">
-      <h1 className="text-7xl sm:text-8xl md:text-9xl font-bold text-black leading-none">
-        404
-      </h1>
-
-      <p className="mt-4 text-base sm:text-lg text-gray-600 max-w-xs sm:max-w-sm leading-relaxed">
-        Oops! The page you're looking for doesn't exist.
-      </p>
-
-      <Link
-        to="/"
-        className="mt-8 px-8 py-3 bg-black text-white text-sm sm:text-base rounded-full
-                   hover:bg-gray-800 active:scale-95 transition-all duration-200
-                   min-h-11 flex items-center justify-center"
-      >
-        Go to Home
-      </Link>
-    </div>
+    <main className="shopora-not-found">
+      <ShoporaAmbientBackground />
+      <div className="shopora-not-found-top"><BrandLogo /></div>
+      <div className="shopora-not-found-content">
+        <p className="lux-eyebrow text-white/45">ROUTE NOT FOUND</p>
+        <h1>404</h1>
+        <h2>THAT ROUTE MISSED THE REP.</h2>
+        <p>The page moved, the link changed, or this set was never programmed.</p>
+        <div>
+          <Link to="/" className="shopora-btn bg-white text-black"><Home size={16} /> Go home</Link>
+          <Link to="/shop" className="shopora-btn border border-white/20 text-white">Shop gear <ArrowRight size={16} /></Link>
+        </div>
+      </div>
+    </main>
   );
-};
-
-export default NotFound;
+}

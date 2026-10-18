@@ -60,6 +60,16 @@ const productFieldsSchema = z.object({
   reviews: nonNegativeIntegerSchema.optional(),
   badge: nullableStringSchema,
   image: z.string().optional(),
+  imageSource: z.enum(["upload", "pexels", "url", "seed", "generated"]).optional(),
+  imageCredit: z.object({
+    provider: z.string().optional(),
+    photographer: z.string().optional(),
+    photographerUrl: z.string().url().optional().or(z.literal("")),
+    sourceUrl: z.string().url().optional().or(z.literal("")),
+    sourceId: z.string().optional(),
+  }).optional(),
+  fallbackImage: z.string().optional(),
+  autoPhoto: z.boolean().optional(),
   stock: nullableNonNegativeIntegerSchema,
   reserved: nonNegativeIntegerSchema.optional(),
 }).strict();
@@ -76,15 +86,37 @@ const workoutExerciseSchema = z.object({
   bodyPart: z.string().optional(),
   target: z.string().optional(),
   equipment: z.string().optional(),
-  gifUrl: z.string().optional()
+  gifUrl: z.string().nullable().optional()
+}).strict();
+
+const workoutChecklistItemSchema = z.object({
+  id: z.string().min(1, 'id is required'),
+  text: z.string().trim().min(1, 'text is required').max(160, 'text is too long'),
+  completed: z.boolean()
+}).strict();
+
+const workoutPlanSchema = z.object({
+  name: z.string().trim().min(1, 'plan name is required'),
+  focus: z.string().optional(),
+  duration: z.string().optional(),
+  durationWeeks: z.number().int().min(1).max(104),
+  difficulty: z.string().optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'startDate must use YYYY-MM-DD'),
+  startedAt: z.string().datetime()
 }).strict();
 
 const workoutLogBodySchema = z.object({
-  date: z.string().min(1, 'date is required'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must use YYYY-MM-DD'),
   title: z.string().optional(),
   notes: z.string().optional(),
-  exercises: z.array(workoutExerciseSchema).optional()
-}).strict();
+  exercises: z.array(workoutExerciseSchema).optional(),
+  checklist: z.array(workoutChecklistItemSchema).max(40).optional(),
+  checkInAt: z.string().datetime().nullable().optional(),
+  checkOutAt: z.string().datetime().nullable().optional(),
+  plan: workoutPlanSchema.nullable().optional()
+}).strict().refine(body => Object.keys(body).some(key => key !== 'date'), {
+  message: 'At least one workout field is required',
+});
 
 module.exports = {
   cartAddSchema: {

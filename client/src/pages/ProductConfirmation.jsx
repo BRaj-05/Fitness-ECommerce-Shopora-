@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fmt } from "../utils/formatters";
 import ProductImage from "../components/ProductImage";
+import ShoporaAmbientBackground from "../components/ShoporaAmbientBackground";
+import { CheckCircle2 } from "lucide-react";
 
 export default function ProductConfirmation() {
   const navigate = useNavigate();
@@ -55,7 +57,8 @@ export default function ProductConfirmation() {
   if (!items.length) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="relative min-h-screen overflow-hidden bg-[var(--lux-bg)] text-[var(--lux-ink)]">
+      <ShoporaAmbientBackground className="opacity-40" />
       <style>{`
         .fade-up {
           opacity: 0;
@@ -68,16 +71,16 @@ export default function ProductConfirmation() {
         .delay-3 { transition-delay: 0.40s; }
       `}</style>
 
-      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-5 sm:py-16">
+      <div className="relative z-10 mx-auto max-w-3xl px-4 py-12 sm:px-5 sm:py-20">
         <div className={`fade-up ${visible ? "visible" : ""} mb-10 text-center sm:mb-12`}>
-          <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 shadow-lg shadow-indigo-600/20 sm:mb-6 sm:h-20 sm:w-20">
-            <span className="text-2xl font-bold text-white sm:text-3xl">✓</span>
+          <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[var(--lux-mint)] text-white shadow-lg shadow-emerald-500/15 sm:mb-6 sm:h-20 sm:w-20">
+            <CheckCircle2 size={34} strokeWidth={1.8} />
           </div>
-          <p className="mb-2 text-xs uppercase tracking-[0.2em] text-indigo-500">
-            Order Confirmed
+          <p className="lux-eyebrow mb-3 text-[var(--lux-mint)]">
+            PAYMENT CONFIRMED
           </p>
-          <h1 className="font-heading mb-3 text-3xl font-extrabold leading-tight text-slate-950 dark:text-white sm:text-4xl md:text-5xl">
-            Payment Successful
+          <h1 className="font-heading mb-3 text-3xl font-extrabold leading-tight sm:text-4xl md:text-5xl">
+            Your order is in motion.
           </h1>
           <p className="mb-1 text-sm text-slate-500 dark:text-slate-400">
             Thank you for shopping with Shopora.
@@ -92,7 +95,7 @@ export default function ProductConfirmation() {
           )}
         </div>
 
-        <div className={`shopora-premium-card fade-up delay-1 ${visible ? "visible" : ""} mb-4 overflow-hidden rounded-3xl`}>
+        <div className={`lux-admin-card fade-up delay-1 ${visible ? "visible" : ""} mb-5 overflow-hidden rounded-2xl`}>
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 dark:border-slate-800 sm:px-7 sm:py-5">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Items Purchased
@@ -162,7 +165,7 @@ export default function ProductConfirmation() {
           <button
             type="button"
             onClick={() => navigate("/home")}
-            className="flex-1 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+            className="shopora-btn shopora-btn-primary flex-1"
           >
             Continue shopping
           </button>
@@ -185,7 +188,7 @@ export default function ProductConfirmation() {
                   },
                 })
               }
-              className="flex-1 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              className="shopora-btn shopora-btn-secondary flex-1"
             >
               View invoice
             </button>

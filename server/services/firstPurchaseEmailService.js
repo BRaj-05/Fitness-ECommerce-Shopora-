@@ -1,6 +1,7 @@
 // server/services/firstPurchaseEmailService.js
 const Order = require("../models/Order");
 const UserProfile = require("../models/UserProfile");
+const AuthUser = require("../models/AuthUser");
 const admin = require("../firebaseAdmin");
 const { sendEmail } = require("./emailService");
 const { generateFirstPurchaseEmail } = require("./emailTemplates");
@@ -19,7 +20,12 @@ async function resolveUserEmail(userId, existingProfile = null) {
       };
     }
 
-    // Try to fetch from Firebase
+    const account = await AuthUser.findOne({ uid: userId }).lean();
+    if (account?.email) {
+      return { email: account.email, displayName: account.name || null };
+    }
+
+    // Temporary legacy fallback during identity migration.
     const firebaseUser = await admin.auth().getUser(userId);
     if (firebaseUser?.email) {
       return {

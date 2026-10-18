@@ -1,5 +1,6 @@
 // src/components/WelcomeBanner.jsx
 import { useEffect, useState } from "react";
+import { CircleCheck, X } from "lucide-react";
 
 export default function WelcomeBanner({ onDismiss }) {
   const [visible, setVisible] = useState(false);
@@ -27,9 +28,7 @@ export default function WelcomeBanner({ onDismiss }) {
     >
       {/* Left: message */}
       <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0">
-        <span className="text-stone-400 shrink-0 text-sm sm:text-base mt-0.5 sm:mt-0">
-          ✓
-        </span>
+        <CircleCheck className="mt-0.5 shrink-0 text-[var(--lux-mint)] sm:mt-0" size={17} />
         {/* Stack on very small screens, inline on sm+ */}
         <p className="text-xs sm:text-sm text-white leading-snug">
           <span className="font-medium">Welcome to Shopora!</span>{" "}
@@ -59,7 +58,7 @@ export default function WelcomeBanner({ onDismiss }) {
                    text-xl leading-none min-w-9 min-h-9 flex items-center
                    justify-center rounded-full hover:bg-white/10 active:scale-95"
       >
-        ×
+        <X size={17} />
       </button>
     </div>
   );

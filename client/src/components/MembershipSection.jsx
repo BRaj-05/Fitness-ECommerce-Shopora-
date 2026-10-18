@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
 import { API_URL } from "../config/app";
 import MembershipVisualPanel from "./MembershipVisualPanel";
+import ShoporaLoader from "./ShoporaLoader";
+import { CheckCircle2 } from "lucide-react";
 
 const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID;
 
@@ -318,9 +320,9 @@ export default function MembershipSection({ user }) {
       <div className="membership-editorial-grid">
         <MembershipVisualPanel currentTier={membership?.tier || "starter"} />
         <div className="membership-plan-side">
-      <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="membership-heading mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600 dark:text-indigo-400">
+          <p className="lux-eyebrow">
             Shopora Membership
           </p>
           <h2 className="font-heading mt-2 text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white">
@@ -332,12 +334,12 @@ export default function MembershipSection({ user }) {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 dark:border-indigo-500/20 dark:bg-indigo-500/10">
+        <div className="membership-status lux-admin-card px-4 py-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-indigo-500">
             Current membership
           </p>
           <p className="font-heading mt-1 text-lg font-extrabold text-slate-950 dark:text-white">
-            {loading ? "Loading..." : membership.name || "Starter"}
+            {loading ? <ShoporaLoader label="Loading membership" size={15} /> : membership.name || "Starter"}
           </p>
           {!loading && membership.expiresAt && (
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -360,7 +362,7 @@ export default function MembershipSection({ user }) {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="membership-tier-grid grid gap-3">
         {PLANS.map((plan, index) => {
           const isCurrent = membership.tier === plan.key;
           const isStarter = plan.key === "starter";
@@ -374,7 +376,7 @@ export default function MembershipSection({ user }) {
           return (
             <article
               key={plan.key}
-              className={`relative overflow-hidden rounded-3xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:bg-slate-900 ${
+              className={`membership-tier-card lux-admin-card shopora-lift relative overflow-hidden p-5 ${
                 isCurrent
                   ? "border-indigo-300 ring-2 ring-indigo-100 dark:border-indigo-500 dark:ring-indigo-500/10"
                   : "border-slate-200 dark:border-slate-800"
@@ -418,7 +420,7 @@ export default function MembershipSection({ user }) {
                     key={benefit}
                     className="flex gap-2.5 text-sm leading-5 text-slate-600 dark:text-slate-300"
                   >
-                    <span className="mt-0.5 text-emerald-500">✓</span>
+                    <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[var(--lux-mint)]" />
                     <span>{benefit}</span>
                   </li>
                 ))}
@@ -438,14 +440,14 @@ export default function MembershipSection({ user }) {
                     type="button"
                     onClick={() => purchaseMembership(plan.key)}
                     disabled={busy || lowerThanCurrent}
-                    className={`w-full rounded-xl px-4 py-3 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    className={`flex min-h-12 w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
                       plan.key === "elite"
                         ? "bg-emerald-600 hover:bg-emerald-700"
                         : "bg-indigo-600 hover:bg-indigo-700"
                     }`}
                   >
                     {busy
-                      ? "Opening payment..."
+                      ? <ShoporaLoader label="Opening payment" size={16} />
                       : lowerThanCurrent
                         ? "Higher tier already active"
                         : isCurrent

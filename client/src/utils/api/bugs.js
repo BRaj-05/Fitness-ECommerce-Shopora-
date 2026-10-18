@@ -5,9 +5,9 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
  * @param {string} token - Firebase ID token
  * @returns {Promise<Array>} Array of bug objects
  */
-export async function getBugs(token) {
+export async function getBugs() {
   const res = await fetch(`${API}/api/bugs`, {
-    headers: { Authorization: `Bearer ${token}` }
+    credentials: 'include',
   });
   
   if (!res.ok) {
@@ -27,13 +27,13 @@ export async function getBugs(token) {
  * @param {string} token - Firebase ID token
  * @returns {Promise<Object>} Updated bug object
  */
-export async function patchBugStatus(id, status, token) {
+export async function patchBugStatus(id, status) {
   const res = await fetch(`${API}/api/bugs/${id}`, {
     method: 'PATCH',
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
+    credentials: 'include',
     body: JSON.stringify({ status })
   });
   

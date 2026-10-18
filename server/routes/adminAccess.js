@@ -23,11 +23,11 @@ router.get(
   "/",
   verifyAdminRequest,
   (req, res) => {
-    if (req.adminSession) {
+    if (req.admin?.source === "env-session") {
       return res.json({
         allowed: true,
         role: "admin",
-        user: { email: req.adminSession.email, provider: "admin-session" },
+        user: { email: req.admin.email, provider: "admin-session" },
       });
     }
     const {
@@ -48,12 +48,13 @@ router.get(
 
     const isSuperAdmin =
       Boolean(
-        superAdminUid &&
-          uid === superAdminUid,
+        req.user?.role === "super-admin" ||
+          (superAdminUid && uid === superAdminUid),
       );
 
     const isAdmin =
       isSuperAdmin ||
+      req.user?.role === "admin" ||
       Boolean(
         adminUid &&
           uid === adminUid,

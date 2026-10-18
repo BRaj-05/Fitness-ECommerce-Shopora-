@@ -1,9 +1,12 @@
 // src/pages/AdminReports.jsx
 import { useState, useEffect } from "react";
 import { fmt } from "../utils/formatters";
-import { useNavigate } from "react-router-dom";
 import AdminNavbar from "../components/AdminNavbar";
+import AdminEmptyState from "../components/AdminEmptyState";
+import AdminPageHeader from "../components/AdminPageHeader";
+import AdminStatCard from "../components/AdminStatCard";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
+import { AlertTriangle, FolderOpen, ShoppingBag, TrendingUp, WalletCards } from "lucide-react";
 
 const API_BASE = `${import.meta.env.VITE_API_URL}/api`;
 
@@ -28,15 +31,13 @@ const SkeletonRow = ({ cols = 3 }) => (
 
 const Empty = ({ message = "No data for this period", hint = "Try switching to a wider range" }) => (
   <tr>
-    <td colSpan={3} className="py-12 sm:py-16 text-center">
-      <p className="text-3xl text-stone-200 mb-3">∅</p>
-      <p className="text-sm text-stone-400 mb-1">{message}</p>
-      <p className="text-xs text-stone-300">{hint}</p>
+    <td colSpan={3}>
+      <AdminEmptyState icon={FolderOpen} title={message} hint={hint} />
     </td>
   </tr>
 );
 
-// ── Mobile card for revenue-by-date row ───────────────────────────────────
+// Mobile revenue row
 const RevenueMobileCard = ({ row }) => (
   <div className="flex items-center justify-between py-3.5 border-b border-stone-100 last:border-0">
     <div>
@@ -54,7 +55,7 @@ const RevenueMobileCard = ({ row }) => (
   </div>
 );
 
-// ── Mobile card for product-performance row ───────────────────────────────
+// Mobile product row
 const ProductMobileCard = ({ p, index, productMap }) => {
   const prod = productMap?.[p.productId] || {};
   const name = prod.name || `Product #${p.productId}`;
@@ -77,7 +78,6 @@ const ProductMobileCard = ({ p, index, productMap }) => {
 };
 
 export default function AdminReports() {
-  const navigate = useNavigate();
   const [range, setRange] = useState("weekly");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -90,11 +90,12 @@ export default function AdminReports() {
       setError(null);
       try {
         const headers = await getAuthHeaders();
-        const res = await fetch(`${API_BASE}/reports/sales?range=${range}`, { headers });
+        const res = await fetch(`${API_BASE}/reports/sales?range=${range}`, { headers, credentials: "include" });
+        if (!res.ok) throw new Error("Failed to load report data");
         const json = await res.json();
         setData(json);
         setLoading(false);
-      } catch (err) {
+      } catch {
         setError("Failed to load report data");
         setLoading(false);
       }
@@ -117,96 +118,58 @@ export default function AdminReports() {
   }, [productPerformance]);
 
   return (
-    <div className="min-h-screen bg-stone-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <style>{`
-        
-        .fade-in { animation: fmFade 0.5s ease forwards; }
-        @keyframes fmFade { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-      `}</style>
+    <div className="admin-lux-page" style={{ fontFamily: "'DM Sans', sans-serif" }}>
 
       <AdminNavbar menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-12">
+      <div className="admin-page-content max-w-5xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-12">
 
-        {/* Page heading + range pills */}
-        <div className="mb-8 sm:mb-10">
-          <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-2">
-            {RANGE_LABELS[range]}
-          </p>
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <h1
-              style={{ fontFamily: "Manrope, Inter, sans-serif" }}
-              className="text-3xl sm:text-4xl md:text-5xl text-stone-900"
-            >
-              Sales Reports
-            </h1>
-
-            {/* Range selector — pill buttons */}
-            <div className="flex gap-2">
-              {Object.entries(RANGE_LABELS).map(([key, label]) => (
+        <AdminPageHeader
+          eyebrow={RANGE_LABELS[range]}
+          title="Sales reports"
+          description="Review paid-order revenue, volume and product performance for the selected period."
+          action={(
+            <div className="flex gap-2" role="group" aria-label="Report range">
+              {Object.entries(RANGE_LABELS).map(([key]) => (
                 <button
                   key={key}
+                  type="button"
                   onClick={() => setRange(key)}
-                  className={`text-xs px-3 sm:px-4 py-2 rounded-full transition-all whitespace-nowrap
-                              ${range === key
-                      ? "bg-stone-900 text-white"
-                      : "border border-stone-200 text-stone-600 hover:bg-stone-100"
-                    }`}
+                  aria-pressed={range === key}
+                  className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold transition-colors sm:px-4 ${range === key ? "bg-[var(--lux-ink)] text-[var(--lux-bg)]" : "border border-[var(--lux-line)] text-[var(--lux-muted)] hover:bg-[var(--lux-soft)]"}`}
                 >
                   {key.charAt(0).toUpperCase() + key.slice(1)}
                 </button>
               ))}
             </div>
-          </div>
-        </div>
+          )}
+        />
 
         {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-100 rounded-2xl px-4 sm:px-6 py-4 sm:py-5 mb-6 sm:mb-8">
-            <p className="text-sm text-red-600">⚠ {error}</p>
+            <p className="flex items-center gap-2 text-sm text-red-600"><AlertTriangle size={16} />{error}</p>
             <p className="text-xs text-red-400 mt-1">Please try refreshing the page</p>
           </div>
         )}
 
-        {/* KPI cards — 3 col on sm+, single col on mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-5 mb-8 sm:mb-10">
-          {[
-            { label: "Total Revenue", value: loading ? null : fmt(summary.totalRevenue), icon: "₹" },
-            { label: "Total Orders", value: loading ? null : summary.totalOrders, icon: "◎" },
-            { label: "Avg Order Value", value: loading ? null : fmt(summary.avgOrderValue), icon: "─" },
-          ].map(({ label, value, icon }) => (
-            <div
-              key={label}
-              className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-7
-                         hover:border-stone-300 hover:shadow-lg transition-all duration-300"
-            >
-              <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-4 sm:mb-5">{label}</p>
-              <div className="flex items-end justify-between">
-                {loading ? (
-                  <div className="h-8 sm:h-9 w-24 sm:w-28 bg-stone-100 rounded-xl animate-pulse" />
-                ) : (
-                  <p
-                    style={{ fontFamily: "Manrope, Inter, sans-serif" }}
-                    className="text-2xl sm:text-3xl md:text-4xl text-stone-900 leading-none"
-                  >
-                    {value}
-                  </p>
-                )}
-                <span className="text-xl text-stone-200 mb-0.5">{icon}</span>
-              </div>
-            </div>
-          ))}
+        {/* KPI cards */}
+        <div className="mb-8 grid grid-cols-1 gap-3 sm:mb-10 sm:grid-cols-3 sm:gap-4 md:gap-5">
+          {loading ? [...Array(3)].map((_, index) => <div key={index} className="lux-admin-card h-32 animate-pulse bg-[var(--lux-soft)]" />) : [
+            { label: "Total revenue", value: summary?.totalRevenue || 0, format: fmt, icon: TrendingUp, accent: "bg-[var(--lux-orange)]", hint: "Paid revenue in range" },
+            { label: "Total orders", value: summary?.totalOrders || 0, icon: ShoppingBag, accent: "bg-[var(--lux-violet)]", hint: "Paid orders in range" },
+            { label: "Average order value", value: summary?.avgOrderValue || 0, format: fmt, icon: WalletCards, accent: "bg-[var(--lux-mint)]", hint: "Revenue per order" },
+          ].map((card, index) => <AdminStatCard key={card.label} {...card} index={index} />)}
         </div>
 
         {/* Revenue by Date */}
         <div className="mb-6 sm:mb-8">
-          <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden
-                          hover:border-stone-300 transition-all duration-300">
+          <div className="lux-admin-table">
             <div className="px-4 sm:px-7 py-4 sm:py-5 border-b border-stone-100
                             flex justify-between items-center">
               <div>
-                <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-0.5">Breakdown</p>
-                <h2 style={{ fontFamily: "Manrope, Inter, sans-serif" }} className="text-xl text-stone-900">
+                <p className="lux-eyebrow mb-0.5">Breakdown</p>
+                <h2 className="font-heading text-xl font-extrabold text-[var(--lux-ink)]">
                   Revenue by Date
                 </h2>
               </div>
@@ -225,7 +188,7 @@ export default function AdminReports() {
                 </div>
               )}
               {!loading && revenueByDate?.length === 0 && (
-                <p className="text-center text-sm text-stone-400 py-10">No data for this period</p>
+                <AdminEmptyState icon={FolderOpen} title="No data for this period" hint="Try switching to a wider range." />
               )}
               {!loading && revenueByDate?.map(row => (
                 <RevenueMobileCard key={row.date} row={row} />
@@ -274,13 +237,12 @@ export default function AdminReports() {
 
         {/* Product Performance */}
         <div>
-          <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden
-                          hover:border-stone-300 transition-all duration-300">
+          <div className="lux-admin-table">
             <div className="px-4 sm:px-7 py-4 sm:py-5 border-b border-stone-100
                             flex justify-between items-center">
               <div>
-                <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-0.5">Ranking</p>
-                <h2 style={{ fontFamily: "Manrope, Inter, sans-serif" }} className="text-xl text-stone-900">
+                <p className="lux-eyebrow mb-0.5">Ranking</p>
+                <h2 className="font-heading text-xl font-extrabold text-[var(--lux-ink)]">
                   Product Performance
                 </h2>
               </div>
@@ -299,7 +261,7 @@ export default function AdminReports() {
                 </div>
               )}
               {!loading && productPerformance?.length === 0 && (
-                <p className="text-center text-sm text-stone-400 py-10">No product data for this period</p>
+                <AdminEmptyState icon={FolderOpen} title="No product data for this period" hint="Try switching to a wider range." />
               )}
               {!loading && productPerformance?.map((p, index) => (
                 <ProductMobileCard key={p.productId} p={p} index={index} productMap={productMap} />
@@ -361,11 +323,11 @@ export default function AdminReports() {
         </div>
       </div>
 
-      <footer className="border-t border-stone-200 bg-white mt-10 sm:mt-12">
+      <footer className="mt-10 border-t border-[var(--lux-line)] bg-[var(--lux-surface)] sm:mt-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-5 lg:px-10 py-5 sm:py-6
                         flex justify-between items-center">
-          <span style={{ fontFamily: "Manrope, Inter, sans-serif" }} className="text-stone-900">Shopora</span>
-          <p className="text-xs text-stone-400">Sales Reports · © 2026</p>
+          <span className="font-heading font-extrabold text-[var(--lux-ink)]">Shopora</span>
+          <p className="text-xs text-[var(--lux-muted)]">Sales Reports &middot; &copy; 2026</p>
         </div>
       </footer>
     </div>

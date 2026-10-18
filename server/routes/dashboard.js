@@ -5,7 +5,6 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Product = require('../models/Product');
-const admin = require('../firebaseAdmin');
 const verifyAdminRequest = require('../middleware/verifyAdminRequest');
 const resolveFirebaseUser = require('../lib/resolveFirebaseUser');
 
@@ -49,12 +48,20 @@ router.get('/', verifyAdminRequest, async (req, res) => {
       createdAt: { $gte: startDate },
     });
     const totalCustomers = uniqueCustomers.length;
+    const averageOrderValue = totalOrders ? totalRevenue / totalOrders : 0;
 
     // ── 3. KPI: Products Low on Stock ─────────────────────────────────────
     
-    const lowStockCount = await Product.countDocuments({
-      stock: { $ne: null, $lt: LOW_STOCK_THRESHOLD },
-    });
+    const inventoryStats = await Product.aggregate([
+      { $group: {
+        _id: null,
+        totalProducts: { $sum: 1 },
+        reservedUnits: { $sum: { $ifNull: ['$reserved', 0] } },
+        outOfStockCount: { $sum: { $cond: [{ $and: [{ $ne: ['$stock', null] }, { $lte: [{ $subtract: ['$stock', { $ifNull: ['$reserved', 0] }] }, 0] }] }, 1, 0] } },
+        lowStockCount: { $sum: { $cond: [{ $and: [{ $ne: ['$stock', null] }, { $gt: [{ $subtract: ['$stock', { $ifNull: ['$reserved', 0] }] }, 0] }, { $lt: [{ $subtract: ['$stock', { $ifNull: ['$reserved', 0] }] }, LOW_STOCK_THRESHOLD] }] }, 1, 0] } },
+      } },
+    ]);
+    const inventory = inventoryStats[0] || {};
 
     // ── 4. Chart: Revenue Over Time ───────────────────────────────────────
     const revenueGroupFormat =
@@ -64,7 +71,7 @@ router.get('/', verifyAdminRequest, async (req, res) => {
 
     const revenueOverTime = await Order.aggregate([
       { $match: { status: 'paid', createdAt: { $gte: startDate } } },
-      { $group: { _id: revenueGroupFormat, revenue: { $sum: '$total' } } },
+      { $group: { _id: revenueGroupFormat, revenue: { $sum: '$total' }, orders: { $sum: 1 } } },
       { $sort: { _id: 1 } },
       { $project: { _id: 0, date: '$_id', revenue: 1 } },
     ]);
@@ -127,6 +134,21 @@ router.get('/', verifyAdminRequest, async (req, res) => {
       customerPhoto: userMap[order.userId]?.photoURL ?? null,
     }));
 
+    const [orderStatusDistribution, regionalAnalytics] = await Promise.all([
+      Order.aggregate([
+        { $match: { createdAt: { $gte: startDate } } },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $project: { _id: 0, status: '$_id', count: 1 } },
+      ]),
+      Order.aggregate([
+        { $match: { status: 'paid', createdAt: { $gte: startDate }, 'shippingAddress.state': { $nin: [null, ''] } } },
+        { $group: { _id: '$shippingAddress.state', orders: { $sum: 1 }, revenue: { $sum: '$total' }, customers: { $addToSet: '$userId' } } },
+        { $project: { _id: 0, region: '$_id', orders: 1, revenue: 1, customers: { $size: '$customers' } } },
+        { $sort: { revenue: -1 } },
+        { $limit: 8 },
+      ]),
+    ]);
+
     // ── Response ──────────────────────────────────────────────────────────
     res.json({
       success: true,
@@ -135,11 +157,17 @@ router.get('/', verifyAdminRequest, async (req, res) => {
         totalRevenue,
         totalOrders,
         totalCustomers,
-        lowStockCount,
+        averageOrderValue,
+        lowStockCount: inventory.lowStockCount || 0,
+        outOfStockCount: inventory.outOfStockCount || 0,
+        reservedUnits: inventory.reservedUnits || 0,
+        totalProducts: inventory.totalProducts || 0,
       },
       revenueOverTime,
       topProducts,
       recentOrders,   // each order now has customerName + customerEmail
+      orderStatusDistribution,
+      regionalAnalytics,
     });
 
   } catch (err) {

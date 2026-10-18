@@ -1,5 +1,6 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion as Motion, useReducedMotion } from "framer-motion";
+import ShoporaAmbientBackground from "./ShoporaAmbientBackground";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -24,17 +25,20 @@ class ErrorBoundary extends React.Component {
 }
 
 function ErrorFallback() {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 px-5 lg:px-10 py-16">
-      <motion.div
-        initial="hidden"
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#08090b] px-5 py-16 lg:px-10">
+      <ShoporaAmbientBackground />
+      <Motion.div
+        initial={reduceMotion ? false : "hidden"}
         animate="visible"
         variants={{
           hidden: { opacity: 0, y: 30 },
           visible: { opacity: 1, y: 0 },
         }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-md bg-white border border-stone-200 rounded-2xl p-8 md:p-10 text-center shadow-lg hover:border-stone-300 transition-all duration-300"
+        className="lux-admin-card relative z-10 w-full max-w-md p-8 text-center md:p-10"
       >
         <div className="mb-6 flex justify-center">
           <span className="text-[10px] tracking-[0.15em] uppercase bg-red-50 text-red-600 border border-red-100 px-3.5 py-1.5 rounded-full inline-block">
@@ -42,16 +46,16 @@ function ErrorFallback() {
           </span>
         </div>
 
-        <h1 className="font-heading text-3xl md:text-4xl text-stone-900 mb-4 leading-tight">
+        <h1 className="font-heading mb-4 text-3xl leading-tight text-[var(--lux-ink)] md:text-4xl">
           Something went wrong.
         </h1>
 
-        <p className="text-sm text-stone-500 leading-relaxed mb-8">
+        <p className="mb-8 text-sm leading-relaxed text-[var(--lux-muted)]">
           The application encountered an unexpected error. Please refresh the page or return to the main dashboard.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-          <motion.button
+          <Motion.button
             whileTap={{ scale: 0.97 }}
             whileHover={{ scale: 1.02 }}
             transition={{ duration: 0.1 }}
@@ -59,9 +63,9 @@ function ErrorFallback() {
             className="w-full sm:w-auto bg-stone-900 text-white text-sm px-8 py-3 rounded-full hover:bg-stone-700 transition-colors cursor-pointer"
           >
             Refresh Page
-          </motion.button>
+          </Motion.button>
           
-          <motion.a
+          <Motion.a
             whileTap={{ scale: 0.97 }}
             whileHover={{ scale: 1.02 }}
             transition={{ duration: 0.1 }}
@@ -69,9 +73,9 @@ function ErrorFallback() {
             className="w-full sm:w-auto text-center border border-stone-300 text-stone-700 text-sm px-8 py-3 rounded-full hover:bg-stone-100 transition-colors"
           >
             Go Home
-          </motion.a>
+          </Motion.a>
         </div>
-      </motion.div>
+      </Motion.div>
     </div>
   );
 }

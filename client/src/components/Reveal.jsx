@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 
 export default function Reveal({
   children,
   className = "",
   delay = 0,
   once = true,
-  as: Tag = "div",
+  as = "div",
 }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -35,13 +35,13 @@ export default function Reveal({
     return () => observer.disconnect();
   }, [once]);
 
-  return (
-    <Tag
-      ref={ref}
-      className={`shopora-reveal ${visible ? "shopora-reveal-visible" : ""} ${className}`}
-      style={{ "--shopora-reveal-delay": `${Math.max(0, delay)}ms` }}
-    >
-      {children}
-    </Tag>
+  return createElement(
+    as,
+    {
+      ref,
+      className: `shopora-reveal ${visible ? "shopora-reveal-visible" : ""} ${className}`,
+      style: { "--shopora-reveal-delay": `${Math.max(0, delay)}ms` },
+    },
+    children,
   );
 }

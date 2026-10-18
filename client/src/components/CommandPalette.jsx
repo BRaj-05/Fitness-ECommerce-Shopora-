@@ -5,7 +5,7 @@
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../auth/firebase";
+import { useAuth } from "../auth/useAuth";
 import { API_URL } from "../config/app";
 import ProductImage from "./ProductImage";
 
@@ -80,6 +80,7 @@ export default function CommandPalette({
   transparent = false,
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const inputRef = useRef(null);
 
   const [open, setOpen] = useState(false);
@@ -94,7 +95,7 @@ export default function CommandPalette({
   const commands = useMemo(() => {
     const base = [...STATIC_COMMANDS];
 
-    if (auth.currentUser) {
+    if (user) {
       base.push(
         {
           id: "profile",
@@ -125,7 +126,7 @@ export default function CommandPalette({
     }
 
     return base;
-  }, [open]);
+  }, [user]);
 
   useEffect(() => {
     const onKeyDown = (event) => {

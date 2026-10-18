@@ -1,67 +1,64 @@
 // src/pages/AdminMarketing.jsx
 import { useState } from "react";
 import AdminNavbar from "../components/AdminNavbar";
+import AdminPageHeader from "../components/AdminPageHeader";
+import { CheckCircle2, FileText, Search, Send, UsersRound } from "lucide-react";
 
-const StrategyCard = ({ strategy }) => (
+const StrategyCard = ({ strategy }) => {
+  const Icon = strategy.icon;
+
+  return (
   <div
-    className="bg-white border border-stone-200 rounded-2xl p-6 sm:p-7
-               hover:border-stone-300 hover:shadow-lg transition-all duration-300"
+    className="lux-admin-card shopora-lift p-6 sm:p-7"
   >
     {/* Title */}
-    <div className="mb-3 sm:mb-4">
-      <h3
-        style={{ fontFamily: "Manrope, Inter, sans-serif" }}
-        className="text-lg sm:text-xl text-stone-900"
-      >
-        {strategy.name}
-      </h3>
+    <div className="mb-4 flex items-center gap-3">
+      <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--lux-soft)] text-[var(--lux-muted)]"><Icon size={18} strokeWidth={1.8} /></span>
+      <h3 className="font-heading text-lg font-extrabold text-[var(--lux-ink)] sm:text-xl">{strategy.name}</h3>
     </div>
 
     {/* Short Explanation */}
-    <p className="text-sm text-stone-600 leading-relaxed mb-4">
+    <p className="mb-4 text-sm leading-relaxed text-[var(--lux-muted)]">
       {strategy.explanation}
     </p>
 
     {/* How it helps e-commerce */}
-    <div className="mb-4 pb-4 border-b border-stone-100">
-      <p className="text-xs tracking-widest uppercase text-stone-400 mb-2">
+    <div className="mb-4 border-b border-[var(--lux-line)] pb-4">
+      <p className="lux-eyebrow mb-2">
         For Shopora
       </p>
-      <p className="text-sm text-stone-700">{strategy.ecommerceBenefit}</p>
+      <p className="text-sm text-[var(--lux-ink)]">{strategy.ecommerceBenefit}</p>
     </div>
 
     {/* Key Benefits */}
     <div>
-      <p className="text-xs tracking-widest uppercase text-stone-400 mb-3">
+      <p className="lux-eyebrow mb-3">
         Key Benefits
       </p>
       <ul className="space-y-2">
         {strategy.benefits.map((benefit, idx) => (
           <li
             key={idx}
-            className="flex items-start gap-2.5 text-sm text-stone-700"
+            className="flex items-start gap-2.5 text-sm text-[var(--lux-muted)]"
           >
-            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full
-                            bg-stone-100 text-stone-600 shrink-0 mt-0.5">
-              {/* No emoji, just a checkmark */}
-            </span>
+            <CheckCircle2 className="mt-0.5 shrink-0 text-[var(--lux-mint)]" size={18} />
             <span>{benefit}</span>
           </li>
         ))}
       </ul>
     </div>
   </div>
-);
+  );
+};
 
 const BenefitHighlight = ({ title, description }) => (
-  <div className="bg-stone-50 border border-stone-100 rounded-xl p-4 sm:p-5">
+  <div className="rounded-xl border border-[var(--lux-line)] bg-[var(--lux-soft)] p-4 sm:p-5">
     <h4
-      style={{ fontFamily: "Manrope, Inter, sans-serif" }}
-      className="text-base sm:text-lg text-stone-900 mb-2"
+      className="font-heading mb-2 text-base font-extrabold text-[var(--lux-ink)] sm:text-lg"
     >
       {title}
     </h4>
-    <p className="text-sm text-stone-600 leading-relaxed">{description}</p>
+    <p className="text-sm leading-relaxed text-[var(--lux-muted)]">{description}</p>
   </div>
 );
 
@@ -71,6 +68,7 @@ export default function AdminMarketing() {
   const strategies = [
     {
       name: "Content Marketing",
+      icon: FileText,
       explanation:
         "Create valuable, educational content like fitness guides, nutrition tips, workout routines, and product reviews that engage your audience and establish trust.",
       ecommerceBenefit:
@@ -84,6 +82,7 @@ export default function AdminMarketing() {
     },
     {
       name: "SEO Marketing",
+      icon: Search,
       explanation:
         "Optimize your website and product pages for search engines by targeting fitness-related keywords like 'best protein supplements,' 'workout equipment,' and 'nutrition plans.'",
       ecommerceBenefit:
@@ -97,6 +96,7 @@ export default function AdminMarketing() {
     },
     {
       name: "Influencer Marketing",
+      icon: UsersRound,
       explanation:
         "Partner with fitness influencers, gym trainers, and nutrition experts to promote Shopora products. They share authentic reviews and recommendations with their engaged audiences.",
       ecommerceBenefit:
@@ -110,6 +110,7 @@ export default function AdminMarketing() {
     },
     {
       name: "Email & WhatsApp Marketing",
+      icon: Send,
       explanation:
         "Build subscriber lists and send personalized product recommendations, exclusive discounts, fitness tips, and order updates directly to customers on email and WhatsApp.",
       ecommerceBenefit:
@@ -125,39 +126,20 @@ export default function AdminMarketing() {
 
   return (
     <div
-      className="min-h-screen bg-stone-50"
+      className="admin-lux-page"
       style={{ fontFamily: "'DM Sans', sans-serif" }}
     >
       <AdminNavbar menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
-      <style>{`
-        
-        .fade-in { animation: fmFadeIn 0.5s ease forwards; }
-        @keyframes fmFadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-      `}</style>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-12">
-        {/* Header Section */}
-        <div className="mb-10 sm:mb-12">
-          <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-2 sm:mb-3">
-            Strategic Overview
-          </p>
-          <h1
-            style={{ fontFamily: "Manrope, Inter, sans-serif" }}
-            className="text-3xl sm:text-4xl md:text-5xl text-stone-900 mb-4 sm:mb-6"
-          >
-            Marketing Strategies
-          </h1>
-          <p className="text-base sm:text-lg text-stone-600 leading-relaxed max-w-2xl">
-            Shopora's growth depends on reaching fitness-conscious customers through multiple channels. Each strategy below plays a critical role in building awareness, trust, and driving conversions.
-          </p>
-        </div>
+      <div className="admin-page-content max-w-7xl mx-auto px-4 sm:px-5 lg:px-10 py-8 sm:py-12">
+        <AdminPageHeader eyebrow="Strategic overview" title="Marketing strategies" description="Plan content, search, influence and retention work without inventing campaign metrics." action={<span className="rounded-full border border-[var(--lux-line)] bg-[var(--lux-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--lux-muted)]">Campaign tracking not configured</span>} />
 
         {/* Strategies Grid */}
         <div className="mb-10 sm:mb-12">
-          <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-4 sm:mb-6">
+          <p className="lux-eyebrow mb-4 sm:mb-6">
             Four Core Approaches
           </p>
-          <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+          <div className="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-2">
             {strategies.map((strategy, idx) => (
               <StrategyCard key={idx} strategy={strategy} />
             ))}
@@ -165,22 +147,21 @@ export default function AdminMarketing() {
         </div>
 
         {/* Why This Matters Section */}
-        <div className="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8">
-          <p className="text-xs tracking-[0.2em] uppercase text-stone-400 mb-3 sm:mb-4">
+        <div className="lux-admin-card p-6 sm:p-8">
+          <p className="lux-eyebrow mb-3 sm:mb-4">
             Implementation
           </p>
           <h2
-            style={{ fontFamily: "Manrope, Inter, sans-serif" }}
-            className="text-2xl sm:text-3xl text-stone-900 mb-6 sm:mb-8"
+            className="font-heading mb-6 text-2xl font-extrabold text-[var(--lux-ink)] sm:mb-8 sm:text-3xl"
           >
             Why This Matters
           </h2>
 
-          <p className="text-base text-stone-700 leading-relaxed mb-6 sm:mb-8">
+          <p className="mb-6 text-base leading-relaxed text-[var(--lux-muted)] sm:mb-8">
             These four strategies work together as an integrated marketing ecosystem. Content marketing provides the foundation of trust and value. SEO ensures discovery. Influencer partnerships amplify reach. Email and WhatsApp marketing seal customer relationships and drive repeat purchases.
           </p>
 
-          <p className="text-base text-stone-700 leading-relaxed mb-8 sm:mb-10">
+          <p className="mb-8 text-base leading-relaxed text-[var(--lux-muted)] sm:mb-10">
             When executed together, they create a flywheel effect: satisfied customers share their experience, influencers recommend products, search engines rank content higher, and email campaigns keep customers coming back. This multiplier effect is how Shopora achieves sustainable growth in a competitive fitness e-commerce market.
           </p>
 
@@ -188,7 +169,7 @@ export default function AdminMarketing() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
             <BenefitHighlight
               title="Long-term Growth"
-              description="These strategies build compound advantages—each success feeds into the next, creating sustainable momentum rather than short-term spikes."
+              description="These strategies build compound advantages; each success feeds into the next, creating sustainable momentum rather than short-term spikes."
             />
             <BenefitHighlight
               title="Lower CAC, Higher LTV"

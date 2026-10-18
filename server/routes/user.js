@@ -5,7 +5,7 @@ const multer = require("multer");
 const streamifier = require("streamifier");
 const cloudinary = require("../lib/cloudinary");
 const UserProfile = require("../models/UserProfile");
-const admin = require("../firebaseAdmin");
+const AuthUser = require("../models/AuthUser");
 const verifyFirebaseToken = require("../middleware/verifyFirebaseToken");
 const { fail } = require("../utils/apiResponse");
 const router = express.Router();
@@ -88,11 +88,11 @@ function checkParamOwnership(req, res) {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/user/login
 // Body: { userId }
-// Called once after Firebase auth resolves.
+// Called once after Shopora authentication resolves.
 // - If profile doesn't exist → create it (isFirstLogin: true) → return showBanner: true
 // - If profile exists and isFirstLogin is true → flip it false → return showBanner: true
 // - If profile exists and isFirstLogin is false → return showBanner: false
-// Also syncs user email from Firebase to the profile for email sending.
+// Also syncs identity details to the profile for email sending.
 // ─────────────────────────────────────────────────────────────────────────────
 router.post("/login", verifyFirebaseToken, async (req, res) => {
   try {
@@ -100,16 +100,9 @@ router.post("/login", verifyFirebaseToken, async (req, res) => {
     if (!userId) return fail(res, "userId required");
     if (!checkBodyOwnership(req, res)) return;
 
-    // Fetch Firebase user to get email and display name
-    let firebaseEmail = null;
-    let displayName = null;
-    try {
-      const firebaseUser = await admin.auth().getUser(userId);
-      firebaseEmail = firebaseUser.email || null;
-      displayName = firebaseUser.displayName || null;
-    } catch (err) {
-      console.warn(`Could not fetch Firebase user for ${userId}:`, err.message);
-    }
+    const account = await AuthUser.findOne({ uid: userId }).lean();
+    const identityEmail = account?.email || req.user.email || null;
+    const displayName = account?.name || null;
 
     let profile = await UserProfile.findOne({ userId });
 
@@ -117,7 +110,7 @@ router.post("/login", verifyFirebaseToken, async (req, res) => {
       // Brand new user — create profile with email, banner should show
       profile = await UserProfile.create({
         userId,
-        email: firebaseEmail,
+        email: identityEmail,
         name: displayName,
       });
       return res.json({
@@ -127,11 +120,10 @@ router.post("/login", verifyFirebaseToken, async (req, res) => {
       });
     }
 
-    // Sync email from Firebase if not already set
-    if (firebaseEmail && !profile.email) {
+    if (identityEmail && !profile.email) {
       profile = await UserProfile.findOneAndUpdate(
         { userId },
-        { $set: { email: firebaseEmail, name: displayName || profile.name } },
+        { $set: { email: identityEmail, name: displayName || profile.name } },
         { returnDocument: 'after' }
       );
     }

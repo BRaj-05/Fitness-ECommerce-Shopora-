@@ -11,9 +11,9 @@ export default function ProductImage({
 }) {
   const primarySrc = String(src || product?.image || "").trim();
   const productId = product?.productId ?? product?.id;
-  const fallbackSrc = productId
+  const fallbackSrc = String(product?.fallbackImage || "").trim() || (productId
     ? `/products/generated/${productId}.svg`
-    : "";
+    : "");
 
   return (
     <Photo

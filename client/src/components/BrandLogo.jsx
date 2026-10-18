@@ -35,7 +35,7 @@ export default function BrandLogo({
       />
 
       {!compact && (
-        <span className="font-heading text-[20px] font-extrabold tracking-[-0.035em] text-[var(--lux-ink)]">
+        <span className="font-heading text-[20px] font-extrabold tracking-normal text-[var(--lux-ink)]">
           Shopora
         </span>
       )}

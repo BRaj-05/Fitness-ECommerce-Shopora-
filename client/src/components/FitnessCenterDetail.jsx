@@ -1,4 +1,5 @@
 import React from "react";
+import { ArrowUpRight, Dumbbell } from "lucide-react";
 
 const Stars = ({ rating = 0 }) => {
   const full = Math.floor(rating || 0);
@@ -22,12 +23,12 @@ export default function FitnessCenterDetail({ center }) {
   if (!center) return null;
 
   return (
-    <div className="bg-white rounded-2xl p-6 flex flex-col md:flex-row gap-6">
+    <div className="lux-admin-card flex flex-col gap-6 p-6 md:flex-row">
       <div className="w-full md:w-1/3 rounded-xl overflow-hidden bg-stone-100 flex items-center justify-center">
         {center.imageUrl ? (
           <img src={center.imageUrl} alt={center.name} className="w-full h-48 object-cover" onError={e => e.currentTarget.style.display = 'none'} />
         ) : (
-          <div className="text-4xl opacity-20">🏋️</div>
+          <Dumbbell className="text-[var(--lux-muted)] opacity-40" size={34} />
         )}
       </div>
 
@@ -47,7 +48,7 @@ export default function FitnessCenterDetail({ center }) {
 
           <div className="text-right">
             <button className="text-xs px-4 py-2 rounded-full border border-stone-300 text-stone-700 hover:bg-stone-900 hover:text-white transition-colors">
-              Visit →
+              Visit <ArrowUpRight size={14} className="ml-1 inline" />
             </button>
           </div>
         </div>

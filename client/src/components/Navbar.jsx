@@ -1,9 +1,7 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { signOut } from "firebase/auth";
-import { auth } from "../auth/firebase";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion as Motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../auth/useAuth";
-import { useAdminAccess } from "../auth/useAdminAccess";
 import ThemeToggle from "./ThemeToggle";
 import CommandPalette from "./CommandPalette";
 import BrandLogo from "./BrandLogo";
@@ -28,12 +26,33 @@ export default function Navbar({
   onSignOut,
 }) {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const {
-    allowed: isAdmin,
-  } = useAdminAccess();
+  const location = useLocation();
+  const reduceMotion = useReducedMotion();
+  const { user, loading: authLoading, logout } = useAuth();
   const [localMenuOpen, setLocalMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 18);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileMenuOpen]);
 
   const isLanding = variant === "landing";
   const effectiveMenuOpen =
@@ -47,7 +66,7 @@ export default function Navbar({
   const handleSignOut = async () => {
     if (onSignOut) await onSignOut();
     else {
-      await signOut(auth);
+      await logout();
       navigate("/");
     }
     setOpen(false);
@@ -58,26 +77,40 @@ export default function Navbar({
     navigate(route);
   };
 
+  const goToHomeSection = (sectionId) => {
+    setMobileMenuOpen(false);
+    const hash = `#${sectionId}`;
+    navigate(`/home${hash}`);
+    if (location.pathname === "/home") {
+      window.requestAnimationFrame(() => {
+        document.getElementById(sectionId)?.scrollIntoView({
+          behavior: reduceMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      });
+    }
+  };
+
   return (
-    <header className="lux-header shopora-premium-header">
+    <header className={`lux-header shopora-premium-header ${scrolled ? "is-scrolled" : ""}`}>
       <div className="shopora-topline" />
       <div className="lux-header-inner shopora-premium-inner">
         <div className="shopora-wordmark"><BrandLogo /></div>
 
         <nav className="shopora-nav hidden items-center justify-center gap-1 md:flex">
-          <button type="button" onClick={() => navigate("/shop")} className="lux-nav-link shopora-nav-item">
+          <button type="button" onClick={() => navigate("/shop")} aria-current={location.pathname === "/shop" || location.pathname.startsWith("/product/") ? "page" : undefined} className="lux-nav-link shopora-nav-item">
             Shop
           </button>
 
-          <button type="button" onClick={() => navigate("/home#plans")} className="lux-nav-link shopora-nav-item">
+          <button type="button" onClick={() => goToHomeSection("plans")} aria-current={location.pathname.startsWith("/plans/") || (location.pathname === "/home" && location.hash === "#plans") ? "page" : undefined} className="lux-nav-link shopora-nav-item">
             Fitness Plans
           </button>
 
-          <button type="button" onClick={() => navigate("/home#health-tools")} className="lux-nav-link shopora-nav-item hidden xl:block">
+          <button type="button" onClick={() => goToHomeSection("health-tools")} aria-current={location.pathname === "/exercises" || (location.pathname === "/home" && location.hash === "#health-tools") ? "page" : undefined} className="lux-nav-link shopora-nav-item hidden xl:block">
             Health Tools
           </button>
 
-          <button type="button" onClick={() => navigate("/tracker")} className="lux-nav-link shopora-nav-item hidden xl:block">
+          <button type="button" onClick={() => navigate("/tracker")} aria-current={location.pathname === "/tracker" ? "page" : undefined} className="lux-nav-link shopora-nav-item hidden xl:block">
             Tracker
           </button>
 
@@ -85,7 +118,9 @@ export default function Navbar({
         </nav>
 
         <div className="shopora-header-actions flex items-center justify-end gap-1.5">
-          <CommandPalette transparent={false} />
+          <div className="shopora-command-trigger">
+            <CommandPalette transparent={false} />
+          </div>
 
           <ThemeToggle className="" />
 
@@ -112,9 +147,9 @@ export default function Navbar({
             >
               <BagIcon />
               {cartCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-orange-500 px-1 text-[9px] font-bold text-white">
+                <Motion.span key={cartCount} initial={reduceMotion ? false : { opacity: 0, scale: 0.72 }} animate={{ opacity: 1, scale: 1 }} className="absolute -right-0.5 -top-0.5 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[var(--lux-orange)] px-1 text-[9px] font-bold text-white">
                   {cartCount}
-                </span>
+                </Motion.span>
               )}
             </button>
           )}
@@ -148,6 +183,7 @@ export default function Navbar({
                   )}
                 </button>
 
+                <AnimatePresence>
                 {effectiveMenuOpen && (
                   <>
                     <button
@@ -155,9 +191,9 @@ export default function Navbar({
                       onClick={() => setOpen(false)}
                       aria-label="Close account menu"
                     />
-                    <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900">
-                      <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                    <Motion.div initial={reduceMotion ? false : { opacity: 0, scale: 0.98, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={reduceMotion ? undefined : { opacity: 0, scale: 0.98, y: 5 }} transition={{ duration: reduceMotion ? 0 : 0.16 }} className="absolute right-0 top-full z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] shadow-xl shadow-black/10">
+                      <div className="border-b border-[var(--lux-line)] px-4 py-3">
+                        <p className="truncate text-sm font-semibold text-[var(--lux-ink)]">
                           {user.displayName || "Account"}
                         </p>
                         <p className="mt-0.5 truncate text-xs text-slate-500">
@@ -175,17 +211,6 @@ export default function Navbar({
                             className="w-full rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-200 dark:hover:bg-indigo-500/10"
                           >
                             Shop products
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <button
-                            onClick={() => {
-                              navigate("/admin/dashboard");
-                              setOpen(false);
-                            }}
-                            className="w-full rounded-xl px-3 py-2.5 text-left text-sm text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-500/10"
-                          >
-                            Admin dashboard
                           </button>
                         )}
                         <button
@@ -213,12 +238,13 @@ export default function Navbar({
                           Sign out
                         </button>
                       </div>
-                    </div>
+                    </Motion.div>
                   </>
                 )}
+                </AnimatePresence>
               </div>
             ) : (
-              <div className="ml-1 flex items-center gap-2">
+              <div className="shopora-auth-actions ml-1 flex items-center gap-2">
                 <button
                   onClick={() => navigate("/auth")}
                   className="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--lux-muted)] hover:text-[var(--lux-ink)] sm:block"
@@ -227,7 +253,7 @@ export default function Navbar({
                 </button>
                 <button
                   onClick={() => navigate("/auth")}
-                  className="rounded-xl bg-[var(--lux-ink)] px-4 py-2.5 text-xs font-semibold text-[var(--lux-bg)] transition hover:opacity-85 sm:text-sm"
+                  className="shopora-get-started rounded-xl bg-[var(--lux-ink)] px-4 py-2.5 text-xs font-semibold text-[var(--lux-bg)] transition hover:opacity-85 sm:text-sm"
                 >
                   Get started
                 </button>
@@ -248,22 +274,57 @@ export default function Navbar({
         </div>
       </div>
 
+      <AnimatePresence>
       {mobileMenuOpen && (
-        <nav className="border-t border-[var(--lux-line)] bg-[var(--lux-surface)] px-4 py-4 md:hidden">
-          <div className="mx-auto grid max-w-7xl gap-1">
-            <button type="button" onClick={() => goMobile("/shop")} className="lux-mobile-nav-link">Shop</button>
-            <button type="button" onClick={() => goMobile("/home#plans")} className="lux-mobile-nav-link">Fitness Plans</button>
-            <button type="button" onClick={() => goMobile("/home#health-tools")} className="lux-mobile-nav-link">Health Tools</button>
-            <button type="button" onClick={() => goMobile("/tracker")} className="lux-mobile-nav-link">Tracker</button>
-            <button type="button" onClick={() => goMobile("/plans/weight-loss")} className="lux-mobile-nav-link">Weight Loss</button>
-            <button type="button" onClick={() => goMobile("/plans/muscle-building")} className="lux-mobile-nav-link">Muscle Building</button>
-            <button type="button" onClick={() => goMobile("/plans/mobility-recovery")} className="lux-mobile-nav-link">Mobility & Recovery</button>
-            <button type="button" onClick={() => goMobile("/home#membership")} className="lux-mobile-nav-link">Membership</button>
-            {user && <button type="button" onClick={() => goMobile("/profile")} className="lux-mobile-nav-link">Profile, rewards & orders</button>}
-            {isAdmin && <button type="button" onClick={() => goMobile("/admin/dashboard")} className="lux-mobile-nav-link">Admin dashboard</button>}
-          </div>
-        </nav>
+        <>
+          <Motion.button
+            type="button"
+            aria-label="Close navigation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileMenuOpen(false)}
+            className="shopora-mobile-backdrop md:hidden"
+          />
+          <Motion.nav
+            aria-label="Mobile navigation"
+            initial={reduceMotion ? false : { opacity: 0, x: 28 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0, x: 28 }}
+            transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="shopora-mobile-drawer md:hidden"
+          >
+            <div className="shopora-mobile-drawer-head">
+              <span className="lux-eyebrow">SHOPORA / NAVIGATION</span>
+              <button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Close navigation">Close</button>
+            </div>
+            <div className="shopora-mobile-group">
+              <p>SHOP</p>
+              <button type="button" onClick={() => goMobile("/shop")} className="lux-mobile-nav-link">All products <span aria-hidden="true">&#8594;</span></button>
+            </div>
+            <div className="shopora-mobile-group">
+              <p>TRAIN</p>
+              <button type="button" onClick={() => goToHomeSection("plans")} className="lux-mobile-nav-link">Fitness Plans</button>
+              <button type="button" onClick={() => goMobile("/plans/weight-loss")} className="lux-mobile-nav-link">Weight Loss</button>
+              <button type="button" onClick={() => goMobile("/plans/muscle-building")} className="lux-mobile-nav-link">Muscle Building</button>
+              <button type="button" onClick={() => goMobile("/plans/mobility-recovery")} className="lux-mobile-nav-link">Mobility & Recovery</button>
+            </div>
+            <div className="shopora-mobile-group">
+              <p>TOOLS</p>
+              <button type="button" onClick={() => goToHomeSection("health-tools")} className="lux-mobile-nav-link">Health Tools</button>
+              <button type="button" onClick={() => goMobile("/exercises")} className="lux-mobile-nav-link">Exercises</button>
+              <button type="button" onClick={() => goMobile("/tracker")} className="lux-mobile-nav-link">Workout Tracker</button>
+            </div>
+            <div className="shopora-mobile-group">
+              <p>ACCOUNT</p>
+              <button type="button" onClick={() => goToHomeSection("membership")} className="lux-mobile-nav-link">Membership</button>
+              {user && <button type="button" onClick={() => goMobile("/profile")} className="lux-mobile-nav-link">Profile, rewards & orders</button>}
+              {!user && <button type="button" onClick={() => goMobile("/auth")} className="lux-mobile-nav-link">Sign in</button>}
+            </div>
+          </Motion.nav>
+        </>
       )}
+      </AnimatePresence>
     </header>
   );
 }

@@ -9,6 +9,22 @@ const exerciseSchema = new mongoose.Schema({
   gifUrl: { type: String }
 }, { _id: false });
 
+const checklistItemSchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  text: { type: String, required: true, trim: true, maxlength: 160 },
+  completed: { type: Boolean, default: false }
+}, { _id: false });
+
+const fitnessPlanSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  focus: { type: String, default: '', trim: true },
+  duration: { type: String, default: '', trim: true },
+  durationWeeks: { type: Number, required: true, min: 1, max: 104 },
+  difficulty: { type: String, default: '', trim: true },
+  startDate: { type: String, required: true },
+  startedAt: { type: Date, required: true }
+}, { _id: false });
+
 const workoutLogSchema = new mongoose.Schema({
   userId: { 
     type: String, 
@@ -22,7 +38,11 @@ const workoutLogSchema = new mongoose.Schema({
   },
   title: { type: String, default: 'Logged Workout' },
   notes: { type: String, default: '' },
-  exercises: { type: [exerciseSchema], default: [] }
+  exercises: { type: [exerciseSchema], default: [] },
+  checklist: { type: [checklistItemSchema], default: [] },
+  checkInAt: { type: Date, default: null },
+  checkOutAt: { type: Date, default: null },
+  plan: { type: fitnessPlanSchema, default: null }
 }, {
   timestamps: true
 });

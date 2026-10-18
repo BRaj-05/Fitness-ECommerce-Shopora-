@@ -11,7 +11,8 @@ const verifyAdmin = (req, res, next) => {
 
   // Production check: match UIDs
   const isProductionAuthorized = (ADMIN_UID && req.user.uid === ADMIN_UID) ||
-    (SUPER_ADMIN_UID && req.user.uid === SUPER_ADMIN_UID);
+    (SUPER_ADMIN_UID && req.user.uid === SUPER_ADMIN_UID) ||
+    req.user.role === "admin" || req.user.role === "super-admin";
 
   if (isProductionAuthorized) return next();
 

@@ -1,5 +1,9 @@
 // server/index.js
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({
+  path: path.resolve(__dirname, ".env"),
+  override: process.env.NODE_ENV !== "production",
+});
 const rewardsRoutes = require("./routes/rewards");
 const express = require("express");
 const cors = require("cors");
@@ -15,12 +19,14 @@ const allowedOrigins = allowedOrigin
   .filter(Boolean);
 
 const isDev = process.env.NODE_ENV !== "production";
-const allowAllOrigins = process.env.ALLOW_ALL_ORIGINS === "true" || isDev;
+const allowAllOrigins = process.env.ALLOW_ALL_ORIGINS === "true" && isDev;
 
 
 
 if (isDev) {
-  allowedOrigins.push("http://localhost:5173", "http://127.0.0.1:5173");
+  for (const origin of ["http://localhost:5173", "http://127.0.0.1:5173"]) {
+    if (!allowedOrigins.includes(origin)) allowedOrigins.push(origin);
+  }
 }
 
 // Display missing variables at server startup. Only require truly critical vars
@@ -42,6 +48,13 @@ const OPTIONAL_ENV_VARS = [
   "ADMIN_LOGIN_EMAIL",
   "ADMIN_LOGIN_PASSWORD",
   "ADMIN_SESSION_SECRET",
+  "JWT_ACCESS_SECRET",
+  "JWT_REFRESH_SECRET",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "GITHUB_CLIENT_ID",
+  "GITHUB_CLIENT_SECRET",
+  "PEXELS_API_KEY",
 ];
 
 const missingCritical = CRITICAL_ENV_VARS.filter((v) => !process.env[v]);
@@ -99,12 +112,10 @@ app.use(
   cors({
     origin: function (origin, callback) {
       if (allowAllOrigins) {
-        console.log(`[CORS] Allowing all origins for testing`);
         return callback(null, true);
       }
 
-      if (allowedOrigins.includes(origin)) {
-        console.log(`[CORS] Allowing whitelisted origin: ${origin}`);
+      if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 

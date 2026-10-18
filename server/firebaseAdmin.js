@@ -38,7 +38,7 @@ if (!admin.apps.length) {
       console.log("Firebase Admin initialized using application default credentials");
     } else {
       console.warn(
-        "Firebase Admin is not configured. Public APIs can start, but authenticated APIs will return 503 until Firebase credentials are added.",
+        "Legacy Firebase authentication fallback is not configured. Shopora JWT authentication remains available.",
       );
     }
   } catch (error) {

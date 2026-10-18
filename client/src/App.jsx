@@ -34,6 +34,8 @@ import PageTransition from "./components/PageTransition";
 import PaymentInvoice from "./pages/PaymentInvoice";
 import PhotoCredits from "./pages/PhotoCredits";
 import AdminLogin from "./pages/AdminLogin";
+import AuthProvider from "./auth/AuthProvider";
+import SEOManager from "./components/SEOManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,7 +53,7 @@ export default function App() {
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
-            <PageTransition>
+            <AuthProvider><SEOManager /><PageTransition>
               <Routes>
                 <Route path="/" element={<NonAdminRoute><LandingPage /></NonAdminRoute>} />
                 <Route path="/auth" element={<Authentication />} />
@@ -92,7 +94,7 @@ export default function App() {
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </PageTransition>
+            </PageTransition></AuthProvider>
           </BrowserRouter>
         </QueryClientProvider>
       </ThemeProvider>

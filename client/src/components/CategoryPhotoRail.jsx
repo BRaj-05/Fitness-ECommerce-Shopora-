@@ -16,13 +16,13 @@ export default function CategoryPhotoRail() {
 
   return (
     <section className="border-y border-[var(--lux-line)] bg-[var(--lux-surface)] py-8 sm:py-10">
-      <div className="mx-auto w-[min(1320px,calc(100%_-_32px))]">
+      <div className="shopora-wide-shell">
         <div className="mb-5 flex items-end justify-between gap-5">
           <div>
             <p className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-[var(--lux-muted)]">
               SHOP BY ROUTINE
             </p>
-            <h2 className="mt-2 font-heading text-2xl font-extrabold tracking-[-0.04em] sm:text-3xl">
+            <h2 className="mt-2 font-heading text-2xl font-extrabold tracking-normal sm:text-3xl">
               Find your next essential.
             </h2>
           </div>

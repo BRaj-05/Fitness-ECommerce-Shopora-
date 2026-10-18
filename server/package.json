@@ -11,6 +11,7 @@
     "test": "jest --runInBand --forceExit",
     "seed:shopora": "node seedShoporaCatalog.js",
     "smoke:shopora": "node scripts/smokeShopora.js"
+    ,"migrate:auth": "node scripts/migrate-auth-to-shopora.js --dry-run"
   },
   "dependencies": {
     "@upstash/redis": "^1.38.3",
@@ -22,6 +23,7 @@
     "express-rate-limit": "^8.6.2",
     "firebase-admin": "^13.10.0",
     "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.4",
     "multer": "^2.4.0",
     "nodemailer": "^9.0.6",

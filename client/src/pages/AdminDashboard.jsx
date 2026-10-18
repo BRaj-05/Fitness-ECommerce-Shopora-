@@ -1,11 +1,15 @@
 ﻿// src/pages/AdminDashboard.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AdminNavbar from "../components/AdminNavbar";
 import AdminKPIGrid from "../components/AdminKPIGrid";
 import AdminRecentOrders from "../components/AdminRecentOrders";
 import CreatorCredit from "../components/CreatorCredit";
 import AdminAccessCard from "../components/AdminAccessCard";
+import AdminEmptyState from "../components/AdminEmptyState";
+import ShoporaAmbientBackground from "../components/ShoporaAmbientBackground";
+import ShoporaLoader from "../components/ShoporaLoader";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import {
   AreaChart, Area,
   BarChart, Bar,
@@ -24,10 +28,10 @@ const fmt = (n) =>
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900">
-      <p className="mb-1 text-xs uppercase tracking-[0.12em] text-slate-400">{label}</p>
+    <div className="rounded-xl border border-[var(--lux-line)] bg-[var(--lux-surface)] px-4 py-3 text-sm shadow-lg">
+      <p className="lux-eyebrow mb-1">{label}</p>
       {payload.map((p) => (
-        <p key={p.name} className="font-medium text-slate-900 dark:text-white">
+        <p key={p.name} className="font-medium text-[var(--lux-ink)]">
           {p.name === "revenue" ? fmt(p.value) : `${p.value} units`}
         </p>
       ))}
@@ -38,9 +42,9 @@ const CustomTooltip = ({ active, payload, label }) => {
 const SectionCard = ({ title, eyebrow, children }) => (
   <div className="lux-admin-card p-5 transition-all duration-300 sm:p-7">
     {eyebrow && (
-      <p className="mb-1 text-xs uppercase tracking-[0.2em] text-slate-400">{eyebrow}</p>
+      <p className="lux-eyebrow mb-1">{eyebrow}</p>
     )}
-    <h2 className="font-heading mb-5 text-xl font-extrabold text-slate-950 dark:text-white sm:mb-6">
+    <h2 className="font-heading mb-5 text-xl font-extrabold text-[var(--lux-ink)] sm:mb-6">
       {title}
     </h2>
     {children}
@@ -51,106 +55,103 @@ const Skeleton = ({ className = "" }) => (
   <div className={`animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800 ${className}`} />
 );
 
-const Empty = () => (
-  <div className="flex flex-col items-center justify-center py-10 text-center sm:py-12">
-    <p className="mb-3 text-3xl text-slate-300">-</p>
-    <p className="text-sm text-slate-400">No data for this period</p>
-  </div>
-);
+const Empty = () => <AdminEmptyState title="No data for this period" hint="Try another dashboard range." />;
 
 export default function AdminDashboard() {
   const [range, setRange] = useState("month");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [lastSync, setLastSync] = useState(null);
+  const [clock, setClock] = useState(Date.now());
+  const hasLoadedRef = useRef(false);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 5_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      setRefreshTick((value) => value + 1);
-    }, 30_000);
+      if (document.visibilityState === "visible") setRefreshTick((value) => value + 1);
+    }, 20_000);
     return () => window.clearInterval(interval);
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     (async () => {
-      setLoading(true);
+      if (hasLoadedRef.current) setRefreshing(true);
+      else setLoading(true);
       setError(null);
       try {
         const headers = await getAuthHeaders();
-        const res = await fetch(`${API_BASE}/api/dashboard?range=${range}`, { headers });
-        if (!res.ok) throw new Error("Failed to fetch dashboard data");
+        const res = await fetch(`${API_BASE}/api/dashboard?range=${range}`, { headers, credentials: "include", signal: controller.signal });
+        if (!res.ok) throw new Error("Dashboard data could not be refreshed.");
         setData(await res.json());
+        setLastSync(new Date());
+        hasLoadedRef.current = true;
       } catch (err) {
-        setError(err.message);
+        if (err.name !== "AbortError") setError(err.message);
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     })();
+    return () => controller.abort();
   }, [range, refreshTick]);
 
+  const syncAge = lastSync ? Math.max(0, Math.floor((clock - lastSync.getTime()) / 1000)) : null;
+  const syncLabel = error
+    ? "Sync issue"
+    : refreshing
+      ? "Refreshing..."
+      : syncAge === null
+        ? "Connecting..."
+        : `Live / Updated ${syncAge < 5 ? "just now" : `${syncAge}s ago`}`;
+
   return (
-    <div className="min-h-screen bg-[var(--lux-bg)] text-[var(--lux-ink)]">
+    <div className="admin-lux-page">
       <AdminNavbar range={range} setRange={setRange} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <style>{`
         .shopora-chart .recharts-cartesian-grid-horizontal line,
-        .shopora-chart .recharts-cartesian-grid-vertical line { stroke: #e2e8f0; }
-        .shopora-chart .recharts-tooltip-cursor { fill: #f8fafc; }
-        .fade-in { animation: fmFadeIn 0.5s ease forwards; }
-        @keyframes fmFadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        .shopora-chart .recharts-cartesian-grid-vertical line { stroke: var(--lux-line); }
+        .shopora-chart .recharts-tooltip-cursor { fill: var(--lux-soft); }
       `}</style>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-5 sm:py-12 lg:px-10">
-        <section className="lux-admin-hero mb-7">
-          <div>
+      <div className="admin-page-content shopora-page-enter mx-auto max-w-7xl px-4 py-8 sm:px-5 sm:py-10 lg:px-10">
+        <section className="lux-admin-hero admin-dashboard-hero relative mb-5 overflow-hidden">
+          <ShoporaAmbientBackground />
+          <div className="relative z-10">
             <p className="lux-eyebrow text-white/45">SHOPORA OPERATIONS</p>
-            <h1 className="mt-2 font-heading text-3xl font-extrabold tracking-[-0.035em] text-white">
+            <h1 className="mt-2 font-heading text-3xl font-extrabold tracking-normal text-white">
               Commerce overview
             </h1>
             <p className="mt-2 text-sm text-white/50">
               Orders, inventory, customers and payment activity.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="shopora-live-dot h-2 w-2 rounded-full bg-emerald-400" />
-            <span className="text-xs font-bold text-white/70">Live</span>
+          <div className="relative z-10 flex items-center gap-2" aria-live="polite">
+            <span className={`${!error && !refreshing ? "shopora-live-dot" : ""} h-2 w-2 rounded-full ${error ? "bg-rose-400" : refreshing ? "bg-amber-300" : "bg-emerald-400"}`} />
+            <span className="text-xs font-bold text-white/70">{syncLabel}</span>
           </div>
         </section>
 
         <AdminAccessCard />
 
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:mb-10 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
-          {[
-            ["/admin/inventory", "Inventory", "Manage products, stock levels and pricing."],
-            ["/admin/customers", "Customers", "View customer profiles and order history."],
-            ["/admin/reports", "Reports", "Track revenue and performance metrics."],
-            ["/admin/marketing", "Marketing", "Manage campaigns and promotions."],
-            ["/admin/bugs", "Bug Reports", "Triage reports submitted by users."],
-          ].map(([href, title, desc]) => (
-            <button
-              key={href}
-              type="button"
-              onClick={() => { window.location.href = href; }}
-              className="lux-admin-card shopora-lift p-5 text-left"
-            >
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-indigo-50 text-sm font-extrabold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
-                {title[0]}
-              </span>
-              <h3 className="font-heading mt-4 text-lg font-extrabold text-slate-950 dark:text-white">{title}</h3>
-              <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{desc}</p>
-            </button>
-          ))}
-        </div>
-
         {error && (
           <div className="mb-6 rounded-2xl border border-red-100 bg-red-50 px-4 py-4 sm:mb-8 sm:px-6 sm:py-5">
-            <p className="text-sm text-red-600">{error} - make sure the backend server is running.</p>
+            <p className="flex items-center gap-2 text-sm text-red-600"><AlertTriangle size={16} />{error}</p>
+            <button type="button" onClick={() => setRefreshTick((value) => value + 1)} className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-red-700 underline"><RefreshCw size={13} />Retry</button>
           </div>
         )}
 
         {loading && (
           <div className="space-y-4 sm:space-y-5">
+            <ShoporaLoader label="Loading live operations data" className="justify-center py-3 text-[var(--lux-muted)]" />
             <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-5">
               {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 sm:h-36" />)}
             </div>
@@ -163,7 +164,7 @@ export default function AdminDashboard() {
         )}
 
         {!loading && data && (
-          <div className="fade-in space-y-4 sm:space-y-5">
+          <div className="space-y-4 sm:space-y-5">
             <AdminKPIGrid stats={data.kpis} />
 
             <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
@@ -174,15 +175,15 @@ export default function AdminDashboard() {
                       <AreaChart data={data.revenueOverTime} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#6366f1" stopOpacity={0.18} />
-                            <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                            <stop offset="0%" stopColor="var(--lux-orange)" stopOpacity={0.2} />
+                            <stop offset="100%" stopColor="var(--lux-orange)" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fill: "#64748b", fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `Rs ${(v / 1000).toFixed(0)}k`} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--lux-line)" />
+                        <XAxis dataKey="date" tick={{ fill: "var(--lux-muted)", fontSize: 10 }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fill: "var(--lux-muted)", fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `Rs ${(v / 1000).toFixed(0)}k`} />
                         <Tooltip content={<CustomTooltip />} />
-                        <Area type="monotone" dataKey="revenue" name="revenue" stroke="#4f46e5" strokeWidth={2} fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: "#4f46e5", strokeWidth: 0 }} />
+                        <Area type="monotone" dataKey="revenue" name="revenue" stroke="var(--lux-orange)" strokeWidth={2} fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: "var(--lux-orange)", strokeWidth: 0 }} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -194,17 +195,49 @@ export default function AdminDashboard() {
                   <div className="shopora-chart">
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart data={data.topProducts} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-                        <XAxis type="number" tick={{ fill: "#64748b", fontSize: 10 }} tickLine={false} axisLine={false} />
-                        <YAxis dataKey="name" type="category" tick={{ fill: "#64748b", fontSize: 10 }} tickLine={false} axisLine={false} width={100} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--lux-line)" horizontal={false} />
+                        <XAxis type="number" tick={{ fill: "var(--lux-muted)", fontSize: 10 }} tickLine={false} axisLine={false} />
+                        <YAxis dataKey="name" type="category" tick={{ fill: "var(--lux-muted)", fontSize: 10 }} tickLine={false} axisLine={false} width={100} />
                         <Tooltip content={<CustomTooltip />} />
-                        <Bar dataKey="totalQuantity" name="revenue" fill="#10b981" radius={[0, 6, 6, 0]} />
+                        <Bar dataKey="totalQuantity" name="units" fill="var(--lux-mint)" radius={[0, 6, 6, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 )}
               </SectionCard>
             </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2">
+              <SectionCard eyebrow="Volume" title="Orders trend">
+                {data.revenueOverTime.length === 0 ? <Empty /> : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={data.revenueOverTime}>
+                      <XAxis dataKey="date" tick={{ fill: "var(--lux-muted)", fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fill: "var(--lux-muted)", fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="orders" fill="var(--lux-violet)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </SectionCard>
+
+              <SectionCard eyebrow="Payments" title="Order status distribution">
+                {data.orderStatusDistribution?.length ? (
+                  <div className="space-y-4">
+                    {data.orderStatusDistribution.map((item) => {
+                      const total = data.orderStatusDistribution.reduce((sum, row) => sum + row.count, 0);
+                      return <div key={item.status}><div className="mb-2 flex justify-between text-xs"><span className="capitalize">{item.status}</span><strong>{item.count}</strong></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${total ? (item.count / total) * 100 : 0}%` }} /></div></div>;
+                    })}
+                  </div>
+                ) : <Empty />}
+              </SectionCard>
+            </div>
+
+            <SectionCard eyebrow="Shipping analytics" title="Top regions">
+              {data.regionalAnalytics?.length ? (
+                <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="text-xs uppercase text-slate-400"><tr><th className="pb-3">Region</th><th>Orders</th><th>Revenue</th><th>Customers</th></tr></thead><tbody>{data.regionalAnalytics.map((row) => <tr key={row.region} className="border-t border-[var(--lux-line)]"><td className="py-3 font-semibold">{row.region}</td><td>{row.orders}</td><td>{fmt(row.revenue)}</td><td>{row.customers}</td></tr>)}</tbody></table></div>
+              ) : <p className="py-8 text-center text-sm text-slate-400">Regional analytics will appear as shipping data becomes available.</p>}
+            </SectionCard>
 
             <AdminRecentOrders orders={data.recentOrders} />
           </div>
@@ -214,7 +247,7 @@ export default function AdminDashboard() {
       <footer className="mt-10 border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-10">
           <CreatorCredit />
-          <p className="text-xs text-slate-400">Shopora Admin &middot; © 2026</p>
+          <p className="text-xs text-slate-400">Shopora Admin &middot; &copy; 2026</p>
         </div>
       </footer>
     </div>

@@ -1,8 +1,7 @@
 // src/pages/Profile.jsx
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../auth/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { useAuth } from "../auth/useAuth";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
 import {
   getRewardTier,
@@ -12,6 +11,7 @@ import {
   getTransactionIcon,
 } from "../utils/rewardsUtils";
 import Navbar from "../components/Navbar";
+import { ArrowLeft, Camera, CircleCheck, MapPin } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -23,10 +23,9 @@ function Toast({ message, onClose }) {
 
   return (
     <div
-      style={{ fontFamily: "'DM Sans', sans-serif" }}
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 bg-stone-900 text-white text-sm px-5 py-3.5 rounded-full shadow-lg animate-fade-up"
+      className="fixed bottom-6 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/10 bg-[#0b0d10] px-5 py-3.5 text-sm text-white shadow-lg animate-fade-up"
     >
-      <span className="text-green-400 text-base">✓</span>
+      <CircleCheck size={17} className="text-[var(--lux-mint)]" />
       {message}
     </div>
   );
@@ -116,6 +115,7 @@ function AddressCard({ address, isDefault, onEdit, onRemove, onSetDefault }) {
 
 export default function Profile() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -136,17 +136,17 @@ const [rewardsError, setRewardsError] = useState("");
 
   useEffect(() => { document.title = "Profile | Shopora"; }, []);
 
-  const reloadProfile = useCallback(async (user = auth.currentUser) => {
-    if (!user) throw new Error("Login required");
+  const reloadProfile = useCallback(async (targetUser = user) => {
+    if (!targetUser) throw new Error("Login required");
 
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API}/api/user/profile/${user.uid}`, { headers, credentials: "include" });
+    const res = await fetch(`${API}/api/user/profile/${targetUser.uid}`, { headers, credentials: "include" });
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) throw new Error(data.error || "Failed to load profile");
 
     setProfile({
-      name: data.name || user.displayName || "",
+      name: data.name || targetUser.displayName || targetUser.name || "",
       phone: data.phone || "",
       addresses: data.addresses || [],
       defaultAddressId: data.defaultAddressId,
@@ -157,23 +157,26 @@ const [rewardsError, setRewardsError] = useState("");
     }
 
     return data;
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) { navigate("/auth"); return; }
-      setPhotoURL(user.photoURL);
+    if (authLoading) return undefined;
+    if (!user) { navigate("/auth"); return undefined; }
+    let active = true;
+    const load = async () => {
+      setPhotoURL(user.photoURL || user.avatarUrl || "");
       setLoading(true);
       try {
         await reloadProfile(user);
       } catch (err) {
-        setError(err.message);
+        if (active) setError(err.message);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
-    });
-    return () => unsub();
-  }, [navigate, reloadProfile]);
+    };
+    load();
+    return () => { active = false; };
+  }, [authLoading, navigate, reloadProfile, user]);
     const fetchRewardsData = async () => {
     try {
       setRewardsLoading(true);
@@ -203,14 +206,13 @@ const [rewardsError, setRewardsError] = useState("");
   if (activeTab === "rewards" && !rewardsData) {
       fetchRewardsData();
     }
-  }, [activeTab]);
+  }, [activeTab, rewardsData]);
 
   // Fetch orders when orders tab is active
   useEffect(() => {
     if (activeTab !== "orders") return;
     
     const fetchOrders = async () => {
-      const user = auth.currentUser;
       if (!user) return;
       
       setLoadingOrders(true);
@@ -229,10 +231,9 @@ const [rewardsError, setRewardsError] = useState("");
     };
 
     fetchOrders();
-  }, [activeTab]);
+  }, [activeTab, user]);
 
   const handleSaveProfile = async () => {
-    const user = auth.currentUser;
     if (!user) return navigate("/auth");
     setError(null);
     setSaving(true);
@@ -261,7 +262,6 @@ const [rewardsError, setRewardsError] = useState("");
   };
 
   const saveProfilePatch = async (payload) => {
-    const user = auth.currentUser;
     if (!user) return navigate("/auth");
 
     const headers = await getAuthHeaders();
@@ -283,7 +283,6 @@ const [rewardsError, setRewardsError] = useState("");
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const user = auth.currentUser;
     if (!user) return;
 
     setError(null);
@@ -294,12 +293,8 @@ const [rewardsError, setRewardsError] = useState("");
       const formData = new FormData();
       formData.append("photo", file);
 
-      const headers = await getAuthHeaders();
       const res = await fetch(`${API}/api/user/upload-photo/${user.uid}`, {
         method: "POST",
-        headers: {
-          "Authorization": headers.Authorization,
-        },
         credentials: "include",
         body: formData,
       });
@@ -396,7 +391,7 @@ const [rewardsError, setRewardsError] = useState("");
   { id: "orders", label: "Orders" },
 ];
   if (loading) return (
-    <div className="min-h-screen bg-stone-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="shopora-profile-page min-h-screen bg-[var(--lux-bg)] text-[var(--lux-ink)]">
       <Navbar variant="home" menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <div className="flex items-center justify-center min-h-[60vh]">
         <span className="text-sm text-stone-400 tracking-wide">Loading your profile…</span>
@@ -405,15 +400,15 @@ const [rewardsError, setRewardsError] = useState("");
   );
 
   return (
-    <div className="min-h-screen bg-stone-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="shopora-profile-page min-h-screen bg-[var(--lux-bg)] text-[var(--lux-ink)]">
       <Navbar variant="home" menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <style>{``}</style>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
       {/* Hero band */}
-      <div className="bg-white border-b border-stone-200">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-0">
+      <div className="border-b border-[var(--lux-line)] bg-[var(--lux-surface)]">
+        <div className="mx-auto max-w-5xl px-4 pb-0 pt-10 sm:px-6">
 
           {/* Profile header */}
           <div className="flex flex-col sm:flex-row sm:items-end gap-5 mb-6">
@@ -424,7 +419,7 @@ const [rewardsError, setRewardsError] = useState("");
                 className="absolute bottom-0 right-0 w-7 h-7 bg-stone-900 text-white rounded-full flex items-center justify-center text-xs hover:bg-stone-700 transition-colors"
                 title="Change photo"
               >
-                ✎
+                <Camera size={13} />
               </button>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
             </div>
@@ -433,15 +428,15 @@ const [rewardsError, setRewardsError] = useState("");
               <h1 style={{ fontFamily: "Manrope, Inter, sans-serif" }} className="text-3xl text-stone-900 leading-tight">
                 {profile.name || "Your Profile"}
               </h1>
-              {auth.currentUser?.email && (
-                <p className="text-sm text-stone-400 mt-0.5">{auth.currentUser.email}</p>
+              {user?.email && (
+                <p className="text-sm text-stone-400 mt-0.5">{user.email}</p>
               )}
             </div>
             <button
               onClick={() => navigate("/home")}
               className="self-start sm:self-auto border border-stone-200 text-stone-700 text-sm px-5 py-2 rounded-full hover:bg-stone-100 transition-colors shrink-0"
             >
-              ← Shop
+              <ArrowLeft size={15} className="inline" /> Shop
             </button>
           </div>
 
@@ -467,7 +462,7 @@ const [rewardsError, setRewardsError] = useState("");
       </div>
 
       {/* Content */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
 
         {error && (
           <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6 text-sm text-red-600">
@@ -505,7 +500,7 @@ const [rewardsError, setRewardsError] = useState("");
                 <div>
                   <label className="block text-xs tracking-wide uppercase text-stone-500 mb-1.5">Email</label>
                   <input
-                    value={auth.currentUser?.email || ""}
+                    value={user?.email || ""}
                     disabled
                     className="w-full border border-stone-200 bg-stone-100 rounded-lg px-4 py-3 text-sm text-stone-400 cursor-not-allowed"
                   />
@@ -549,7 +544,7 @@ const [rewardsError, setRewardsError] = useState("");
 
             {profile.addresses.length === 0 ? (
               <div className="bg-white border border-stone-200 rounded-2xl p-10 text-center">
-                <p className="text-2xl mb-3">∅</p>
+                <MapPin className="mx-auto mb-3 text-[var(--lux-muted)]" size={28} />
                 <p className="text-sm text-stone-500 mb-1">No addresses saved yet.</p>
                 <p className="text-xs text-stone-400">Add one to speed up checkout.</p>
                 <button
@@ -645,7 +640,7 @@ const [rewardsError, setRewardsError] = useState("");
                                 order,
                                 customer: {
                                   name: profile.name,
-                                  email: auth.currentUser?.email,
+                                  email: user?.email,
                                   photoURL,
                                 },
                                 address:

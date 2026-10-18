@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { fmt } from "../utils/formatters";
 import { BrandMark } from "./BrandLogo";
 import ProductVisual from "./ProductVisual";
+import { ArrowRight, Minus, Plus, X } from "lucide-react";
 
 export default function CartDrawer({
   isOpen,
@@ -109,20 +110,20 @@ export default function CartDrawer({
         aria-modal="true"
         aria-labelledby="cart-drawer-title"
         aria-hidden={!isOpen}
-        className={`fixed right-0 top-0 z-[9999] flex h-dvh w-full max-w-[420px] flex-col border-l border-[var(--lux-line)] bg-[var(--lux-surface)] shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed right-0 top-0 z-[9999] flex h-dvh w-full max-w-[440px] flex-col border-l border-[var(--lux-line)] bg-[var(--lux-surface)] shadow-2xl transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-stone-200 px-5 py-5 dark:border-slate-800 sm:px-7">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400">
-              Your
+              SHOPORA
             </p>
             <h2
               id="cart-drawer-title"
               className="font-heading mt-1 text-2xl font-extrabold tracking-tight text-stone-950 dark:text-white"
             >
-              Cart
+              Your bag
               {cartCount > 0 && (
                 <span className="ml-2 text-stone-400">· {cartCount}</span>
               )}
@@ -134,9 +135,9 @@ export default function CartDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close cart"
-            className="grid h-10 w-10 place-items-center rounded-full text-xl text-stone-400 transition hover:bg-stone-100 hover:text-stone-950 dark:hover:bg-slate-800 dark:hover:text-white"
+            className="grid h-10 w-10 place-items-center rounded-xl text-stone-400 transition hover:bg-stone-100 hover:text-stone-950 dark:hover:bg-slate-800 dark:hover:text-white"
           >
-            ×
+            <X size={18} />
           </button>
         </div>
 
@@ -203,7 +204,7 @@ export default function CartDrawer({
                         onClick={() => updateQty(item.id, -1)}
                         className="grid h-8 w-8 place-items-center text-stone-500 transition hover:text-stone-950 dark:text-slate-300 dark:hover:text-white"
                       >
-                        −
+                        <Minus size={14} />
                       </button>
 
                       <span className="min-w-7 text-center text-xs font-bold text-stone-900 dark:text-white">
@@ -216,7 +217,7 @@ export default function CartDrawer({
                         onClick={() => updateQty(item.id, 1)}
                         className="grid h-8 w-8 place-items-center text-stone-500 transition hover:text-stone-950 dark:text-slate-300 dark:hover:text-white"
                       >
-                        +
+                        <Plus size={14} />
                       </button>
                     </div>
                   </div>
@@ -244,8 +245,8 @@ export default function CartDrawer({
             </div>
 
             <Link to="/checkout" onClick={onClose} className="mt-5 block">
-              <span className="flex min-h-12 w-full items-center justify-center rounded-xl bg-[var(--lux-ink)] px-6 text-sm font-bold text-[var(--lux-bg)] transition hover:opacity-85">
-                Checkout →
+              <span className="group flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--lux-ink)] px-6 text-sm font-bold text-[var(--lux-bg)] transition hover:opacity-85">
+                Secure checkout <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
               </span>
             </Link>
 

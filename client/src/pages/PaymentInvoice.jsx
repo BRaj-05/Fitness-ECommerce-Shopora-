@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import CreatorCredit from "../components/CreatorCredit";
 import ProductImage from "../components/ProductImage";
-import { auth } from "../auth/firebase";
+import { useAuth } from "../auth/useAuth";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
 import {
   API_URL,
@@ -39,6 +39,7 @@ function InvoiceSkeleton() {
 }
 
 export default function PaymentInvoice() {
+  const { user, loading: authLoading } = useAuth();
   const { orderId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -59,8 +60,7 @@ export default function PaymentInvoice() {
     let active = true;
 
     const load = async () => {
-      const user = auth.currentUser;
-
+      if (authLoading) return;
       if (!user) {
         setLoading(false);
         if (!passed.order) setError("Sign in to load this invoice.");
@@ -123,7 +123,7 @@ export default function PaymentInvoice() {
 
     load();
     return () => { active = false; };
-  }, [orderId]);
+  }, [authLoading, order, orderId, passed.order, user]);
 
   const productMap = useMemo(
     () => new Map(products.map((product) => [Number(product.productId || product.id), product])),
@@ -158,10 +158,10 @@ export default function PaymentInvoice() {
   }, [order, passed.items, productMap]);
 
   const billedName =
-    passed.customer?.name || profile?.name || auth.currentUser?.displayName || "Shopora Customer";
+    passed.customer?.name || profile?.name || user?.displayName || user?.name || "Shopora Customer";
 
   const billedEmail =
-    passed.customer?.email || profile?.email || auth.currentUser?.email || "";
+    passed.customer?.email || profile?.email || user?.email || "";
 
   const address =
     passed.address ||
@@ -213,41 +213,41 @@ export default function PaymentInvoice() {
   }
 
   return (
-    <div className="shopora-invoice-page min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="shopora-invoice-page min-h-screen bg-[var(--lux-bg)] text-[var(--lux-ink)]">
       <Navbar variant="home" />
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <div className="invoice-no-print mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-500">Payment record</p>
-            <h1 className="font-heading mt-1 text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white sm:text-3xl">Invoice</h1>
+            <p className="lux-eyebrow text-[var(--lux-orange)]">PAYMENT RECORD</p>
+            <h1 className="font-heading mt-1 text-2xl font-extrabold sm:text-3xl">Invoice</h1>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => navigate(-1)} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">Back</button>
-            <button type="button" onClick={() => window.print()} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/15 transition hover:bg-indigo-700">Print / Save PDF</button>
+            <button type="button" onClick={() => navigate(-1)} className="shopora-btn shopora-btn-secondary">Back</button>
+            <button type="button" onClick={() => window.print()} className="shopora-btn shopora-btn-primary">Print / Save PDF</button>
           </div>
         </div>
 
-        <article className="shopora-invoice-sheet overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-950/5 dark:border-slate-800 dark:bg-slate-900">
-          <header className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-slate-950 via-indigo-950 to-indigo-800 px-6 py-8 text-white dark:border-slate-800 sm:px-9 sm:py-10">
-            <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl" />
+        <article className="shopora-invoice-sheet overflow-hidden rounded-2xl border border-[var(--lux-line)] bg-[var(--lux-surface)] shadow-xl shadow-black/5">
+          <header className="relative overflow-hidden border-b border-white/10 bg-[#090a0c] px-6 py-8 text-white sm:px-9 sm:py-10">
+            <div className="absolute inset-y-0 left-0 w-1 bg-[var(--lux-orange)]" />
             <div className="relative flex flex-col justify-between gap-7 sm:flex-row sm:items-start">
               <div>
                 <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-sm font-extrabold text-indigo-700">S</span>
+                  <span className="grid h-11 w-11 place-items-center rounded-lg bg-white text-sm font-extrabold text-black">S</span>
                   <div>
                     <p className="font-heading text-xl font-extrabold">Shopora</p>
-                    <p className="text-xs text-indigo-100/65">Train better. Shop smarter.</p>
+                    <p className="text-xs text-white/50">Train better. Shop smarter.</p>
                   </div>
                 </div>
-                <p className="mt-8 text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-200/60">Invoice number</p>
+                <p className="mt-8 text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Invoice number</p>
                 <p className="mt-1 font-mono text-sm font-semibold text-white">{invoiceNumber}</p>
               </div>
 
               <div className="sm:text-right">
                 <span className="inline-flex rounded-xl bg-emerald-400/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200 ring-1 ring-emerald-300/20">Paid</span>
-                <p className="mt-4 text-xs text-indigo-100/60">Issued</p>
+                <p className="mt-4 text-xs text-white/45">Issued</p>
                 <p className="mt-1 text-sm font-semibold">{formatDate(order?.createdAt)}</p>
               </div>
             </div>
@@ -277,7 +277,7 @@ export default function PaymentInvoice() {
             <section className="mt-8">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-indigo-500">Order summary</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--lux-orange)]">Order summary</p>
                   <h2 className="font-heading mt-1 text-xl font-extrabold text-slate-950 dark:text-white">Purchased items</h2>
                 </div>
                 <p className="text-xs text-slate-400">{invoiceItems.length} item{invoiceItems.length === 1 ? "" : "s"}</p>

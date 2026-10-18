@@ -27,7 +27,27 @@ const GROUPS = [
     ],
   },
   {
-    eyebrow: "ACCOUNT",
+    eyebrow: "TOOLS",
+    items: [
+      {
+        title: "BMI / TDEE",
+        subtitle: "Know your daily baseline",
+        route: "/home#health-tools",
+      },
+      {
+        title: "Exercises",
+        subtitle: "Browse movement patterns",
+        route: "/exercises",
+      },
+      {
+        title: "Tracker",
+        subtitle: "Plan and review sessions",
+        route: "/tracker",
+      },
+    ],
+  },
+  {
+    eyebrow: "SHOPORA",
     items: [
       {
         title: "Membership",
@@ -40,14 +60,9 @@ const GROUPS = [
         route: "/profile",
       },
       {
-        title: "Profile",
-        subtitle: "Personal info and addresses",
-        route: "/profile",
-      },
-      {
-        title: "Orders",
-        subtitle: "Purchases and invoices",
-        route: "/profile",
+        title: "Credits",
+        subtitle: "Product photo attribution",
+        route: "/credits",
       },
     ],
   },
@@ -147,9 +162,9 @@ export default function PremiumMoreMenu() {
 
           <div
             role="menu"
-            className="lux-mega-menu absolute left-1/2 top-[calc(100%+14px)] z-[1200] w-[min(680px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden"
+            className="lux-mega-menu shopora-mega-enter absolute left-1/2 top-[calc(100%+14px)] z-[1200] w-[min(820px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden"
           >
-            <div className="grid gap-0 md:grid-cols-2">
+            <div className="grid gap-0 md:grid-cols-3">
               {GROUPS.map((group) => (
                 <section key={group.eyebrow} className="p-5 sm:p-6">
                   <p className="lux-eyebrow">{group.eyebrow}</p>

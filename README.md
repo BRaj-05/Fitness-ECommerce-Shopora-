@@ -1,101 +1,55 @@
-﻿# Shopora
+# Shopora
 
 `Train better. Shop smarter.`
 
-Shopora is a full-stack fitness commerce application built with React + Vite + Tailwind on the client and Node/Express on the server. It combines a product storefront, MongoDB-backed cart and stock reservation logic, Firebase Authentication with Google sign-in, Razorpay-verified payments, Shopora Membership, Shopora Rewards, fitness tools, plans, workouts and an admin dashboard.
+Shopora is a full-stack fitness commerce and digital performance application. It combines a 40-product MongoDB catalog, reserved-stock carts, verified Razorpay payments, memberships, rewards, fitness tools, workout tracking, and a secure operations console.
 
 Repository: https://github.com/BRaj-05/Fitness-ECommerce-Shopora-
 
 ## Features
 
-- React + Vite + Tailwind storefront
-- Node/Express API
-- MongoDB data layer
-- Firebase Google authentication
-- MongoDB + bcrypt local registration with username/email login
-- Firebase custom-token bridge and Firebase-managed browser sessions
-- 40-product MongoDB catalog across 8 product types with unique Shopora artwork
-- Product search, filters and sorting
-- Stock and reserved inventory, cart reservations and Buy Now
-- Saved shipping addresses
-- Razorpay checkout with backend-authoritative totals and HMAC/payment verification
-- Paid orders and printable invoices
-- Shopora Membership with Razorpay-backed Pro and Elite tiers
-- Shopora Rewards points and membership multipliers
-- BMI/TDEE and calorie tools
-- Fitness plans and workout tracker
-- Responsive light/dark UI
-- Premium admin dashboard with product CRUD, restocking and image management
-- searchable recent transactions
-- invoice/print experience
-- 30-second admin polling
-- **Quick Find (`Ctrl/Cmd + K`)** - keyboard-first navigation across Shopora pages, fitness tools, plans and live products.
-
-Quick Find uses a global keyboard shortcut, loads the product catalog lazily on first open, combines static navigation commands with live product matches, supports keyboard selection, and requires no additional UI dependency.
+- Shopora-owned MongoDB identities with local username/email login
+- bcrypt password hashing, Google OAuth 2.0, and GitHub OAuth 2.0
+- Short-lived JWT access sessions and rotating, revocable refresh sessions
+- HttpOnly cookie storage with server-side authorization
+- Product search, filtering, Quick Find, cart reservation, checkout, orders, and invoices
+- Server-authoritative Razorpay product and membership verification
+- Shopora Membership and Rewards multipliers
+- Saved profiles and shipping addresses
+- BMI/TDEE, calorie tools, fitness plans, and workout tracking
+- Premium responsive light/dark customer and admin interfaces
+- Admin product CRUD, restocking, Cloudinary upload, and server-side Pexels search
 
 ## Tech Stack
 
-### Store catalog
+- React, Vite, Tailwind CSS
+- Framer Motion, Recharts
+- Node.js, Express
+- MongoDB, Mongoose
+- bcrypt, JSON Web Tokens
+- Google OAuth 2.0, GitHub OAuth 2.0
+- Razorpay, Cloudinary, Pexels API
+- Jest, Supertest
 
-The included Shopora demo catalog contains 40 seeded products across:
+The server retains an explicitly controlled Firebase Admin bearer-token fallback during staged migration. Set `ENABLE_LEGACY_FIREBASE_AUTH=false` after existing production identities have been migrated and verified. Firebase is not the primary Shopora browser session.
 
-- Protein Powder
-- Protein Bar
-- Shaker Bottle
-- Jump Rope
-- Resistance Bands
-- Yoga Mat
-- Foam Roller
-- Fitness Tracker
+## Catalog And Images
 
-Seeded catalog entries live in MongoDB and use unique local Shopora product artwork. Admin-created products can use local/remote URLs or the configured Cloudinary upload flow.
-
-Inventory tracks total stock and reserved stock so customer-facing availability is derived from:
+The seeded catalog contains 40 products across protein powder, protein bars, shaker bottles, jump ropes, resistance bands, yoga mats, foam rollers, and fitness trackers. Availability remains:
 
 `available = stock - reserved`
 
-### Product photography
+Reviewed local product photos and generated SVG fallbacks remain available. New admin products can use an uploaded Cloudinary image, a selected Pexels result imported by the server to Cloudinary, or an explicit image URL. Pexels attribution is shown at `/credits`.
 
-The seeded Shopora catalog can use curated local product photography sourced through the Pexels API. Photo metadata and source links are stored in `client/public/products/real/manifest.json`, while the original Shopora-generated product artwork remains available as an offline/broken-image fallback.
+See [docs/PRODUCT_IMAGES.md](docs/PRODUCT_IMAGES.md).
 
-See `/credits` in the app for photographer/source credits.
+## Authentication
 
-- React, Vite, Tailwind CSS
-- Node.js, Express
-- MongoDB, Mongoose
-- Firebase Authentication and Firebase Admin SDK
-- Razorpay
-- Jest and Supertest
+Shopora issues its own access JWT and rotating refresh session in secure HttpOnly cookies. Local passwords are stored only as bcrypt hashes. Verified Google and GitHub identities are linked by provider account ID or verified email; display names and usernames are never trusted for linking.
 
-## Architecture
+Existing `uid` values remain the stable Shopora internal user ID so carts, orders, profiles, addresses, memberships, rewards, and workouts remain attached.
 
-The React client talks to an Express API. Firebase handles user authentication on the client, while protected backend routes validate Firebase bearer tokens through Firebase Admin. MongoDB stores commerce, profile, rewards, workout and membership data.
-
-Membership architecture:
-
-```text
-React MembershipSection
-        ->
-Firebase bearer token
-        ->
-POST /api/membership/create-order
-        ->
-Server chooses authoritative tier price
-        ->
-Razorpay order
-        ->
-Razorpay checkout
-        ->
-POST /api/membership/verify-payment
-        ->
-Server HMAC-SHA256 verification
-        ->
-Membership MongoDB document
-        ->
-Active 30-day status
-        ->
-Product purchases receive membership reward multiplier
-```
+See [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Local Setup
 
@@ -111,56 +65,29 @@ npm install
 npm run dev
 ```
 
-The client runs on `http://localhost:5173` by default and the API runs on `http://localhost:5000`.
+The client defaults to `http://localhost:5173`; the API defaults to `http://localhost:5000`. Copy the `.env.example` files and provide MongoDB plus the integrations you intend to test. Secrets belong only in local/deployment environment variables.
 
-## Environment Variables
+Run the auth migration in dry-run mode first:
 
-Use `client/.env.example` and `server/.env.example` as templates.
+```bash
+cd server
+npm run migrate:auth
+node scripts/migrate-auth-to-shopora.js --apply
+```
 
-Required values for full local functionality:
+The migration never deletes data or rewrites commerce document user IDs.
 
-- MongoDB URI
-- Firebase web app config
-- Firebase Admin credentials
-- Razorpay key ID and key secret
+## Payments And Admin
 
-Optional integrations:
-
-- RapidAPI / ExerciseDB
-- SMTP
-- Cloudinary
-
-The fitness-center seed file contains fictional Mumbai demo locations for local development; it is not production business identity data.
-
-## Payment Flow
-
-Product payments use Razorpay Checkout. The backend creates payment orders and verifies successful payments with Razorpay HMAC signatures before creating paid orders and clearing reserved cart stock.
-
-Membership payments use separate Razorpay order and verification endpoints. The server determines the Pro and Elite prices from backend configuration and never trusts a client-supplied payment amount.
-
-## Authentication Flow
-
-Users can sign in with Google through Firebase Authentication or register a local Shopora account whose bcrypt password hash is stored in MongoDB. Local login accepts username or email, then exchanges a server-issued Firebase custom token for a Firebase-managed session. Protected backend routes require Firebase bearer tokens. If Firebase Admin credentials are missing in development, public APIs can still boot and protected routes fail safely with `503`.
+Product and membership amounts are chosen by the backend. Razorpay responses are accepted only after server-side signature verification. The dedicated admin login remains a separate signed HttpOnly session using `ADMIN_LOGIN_EMAIL`, `ADMIN_LOGIN_PASSWORD`, and `ADMIN_SESSION_SECRET`.
 
 ## Project Structure
 
 ```text
-client/
-  src/
-    auth/
-    components/
-    context/
-    pages/
-    utils/
-server/
-  config/
-  middleware/
-  models/
-  routes/
-  services/
-  tests/
-docs/
-scripts/
+client/     React application
+server/     Express API, models, services, tests, migrations
+docs/       Security and architecture documentation
+scripts/    Catalog photo preparation data
 ```
 
 ## Creator
@@ -170,10 +97,6 @@ Shopora is developed and substantially customized by **Basant Raj**.
 - LinkedIn: https://www.linkedin.com/in/raj-basant/
 - GitHub: https://github.com/BRaj-05
 
-## Acknowledgement
-
-Shopora was developed and substantially customized by Basant Raj using an MIT-licensed open-source foundation. The original license notice is retained in LICENSE.
-
 ## License
 
-This project is licensed under the MIT License.
+Shopora retains its MIT license and original license notice in `LICENSE`.

@@ -3,7 +3,6 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const UserProfile = require('../models/UserProfile');
-const admin = require('../firebaseAdmin');
 const verifyAdminRequest = require('../middleware/verifyAdminRequest');
 const { sendInactivityReminderEmail } = require('../services/inactiveCustomerEmailService');
 const resolveFirebaseUser = require('../lib/resolveFirebaseUser');

@@ -1,0 +1,32 @@
+{
+  "sources": [
+    {
+      "provider": "Free Exercise DB",
+      "url": "https://github.com/yuhonas/free-exercise-db",
+      "license": "Public domain / Unlicense",
+      "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/main/LICENSE.md",
+      "usage": "29 movement-specific exercise demonstrations"
+    },
+    {
+      "provider": "RepDB Exercise Dataset",
+      "url": "https://exercise-dataset.com/exercise/pike-push-ups/",
+      "license": "Free commercial in-app use with attribution",
+      "attribution": "Exercise data by RepDB",
+      "usage": "Pike push-up illustration"
+    },
+    {
+      "provider": "Pexels",
+      "url": "https://www.pexels.com/",
+      "license": "Pexels License",
+      "licenseUrl": "https://www.pexels.com/license/",
+      "usage": "Movement-specific cardio photography",
+      "photos": [
+        { "file": "jumping-jacks.jpg", "photoId": 6339345, "photographer": "Pavel Danilyuk", "url": "https://www.pexels.com/photo/6339345/" },
+        { "file": "high-knees.jpg", "photoId": 6516199, "photographer": "Polina Tankilevitch", "url": "https://www.pexels.com/photo/6516199/" },
+        { "file": "mountain-climber.jpg", "photoId": 2294361, "photographer": "Li Sun", "url": "https://www.pexels.com/photo/2294361/" },
+        { "file": "jump-rope.jpg", "photoId": 4804349, "photographer": "Ketut Subiyanto", "url": "https://www.pexels.com/photo/4804349/" },
+        { "file": "burpee.jpg", "photoId": 30246184, "photographer": "Andrea Musto", "url": "https://www.pexels.com/photo/30246184/" }
+      ]
+    }
+  ]
+}

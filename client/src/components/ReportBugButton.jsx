@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../auth/useAuth';
+import { AlertTriangle, Check, CircleCheck, X } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -52,9 +53,7 @@ function Toast({ type, message, onDismiss }) {
       role="alert"
       aria-live="polite"
     >
-      <span className={`mt-0.5 select-none font-medium ${isSuccess ? 'text-stone-900' : 'text-red-600'}`}>
-        {isSuccess ? '✓' : '×'}
-      </span>
+      {isSuccess ? <CircleCheck size={17} className="mt-0.5 text-[var(--lux-mint)]" /> : <AlertTriangle size={17} className="mt-0.5 text-red-600" />}
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${isSuccess ? 'text-stone-900' : 'text-red-600'}`}>
           {isSuccess ? 'Report received' : 'Could not send report'}
@@ -69,7 +68,7 @@ function Toast({ type, message, onDismiss }) {
         className={`text-base leading-none mt-0.5 transition-colors
           ${isSuccess ? 'text-stone-300 hover:text-stone-600' : 'text-red-300 hover:text-red-600'}`}
       >
-        ×
+        <X size={16} />
       </button>
     </motion.div>
   );
@@ -111,7 +110,7 @@ function SuccessOverlay() {
         transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.05 }}
         className="w-12 h-12 rounded-full bg-stone-900 flex items-center justify-center text-white text-xl"
       >
-        ✓
+        <Check size={20} />
       </motion.div>
       <motion.p
         initial={{ opacity: 0, y: 8 }}
@@ -168,7 +167,7 @@ export default function ReportBugButton() {
   };
 
   const openModal  = () => { resetForm(); setOpen(true); };
-  const closeModal = () => { if (loading) return; setOpen(false); };
+  const closeModal = useCallback(() => { if (loading) return; setOpen(false); }, [loading]);
 
   // Escape to close
   useEffect(() => {
@@ -176,7 +175,7 @@ export default function ReportBugButton() {
     const onKey = (e) => { if (e.key === 'Escape') closeModal(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, loading]);
+  }, [open, closeModal]);
 
   // Handle screenshot pick
   const onFileChange = (e) => {
@@ -217,10 +216,6 @@ export default function ReportBugButton() {
     setLoading(true);
     try {
       const headers = {};
-      if (user) {
-        const token = await user.getIdToken();
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
       let body;
       if (screenshot?.file) {
@@ -248,7 +243,7 @@ export default function ReportBugButton() {
         });
       }
 
-      const res = await fetch(`${API}/api/bugs`, { method: 'POST', headers, body });
+      const res = await fetch(`${API}/api/bugs`, { method: 'POST', headers, credentials: 'include', body });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || 'Server error. Please try again.');
@@ -346,7 +341,7 @@ export default function ReportBugButton() {
                     className="text-stone-400 hover:text-stone-700 transition-colors
                                text-2xl leading-none mt-0.5 disabled:opacity-30"
                   >
-                    ×
+                    <X size={19} />
                   </motion.button>
                 </div>
 
@@ -482,7 +477,7 @@ export default function ReportBugButton() {
                                    text-xs hover:bg-stone-900 transition-colors"
                         aria-label="Remove screenshot"
                       >
-                        ×
+                        <X size={13} />
                       </button>
                     </div>
                   ) : (

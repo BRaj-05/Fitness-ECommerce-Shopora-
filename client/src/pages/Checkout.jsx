@@ -1,8 +1,7 @@
 ﻿// src/pages/Checkout.jsx
-import { useEffect, useState, useRef } from "react";
+import { createElement, useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../auth/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { useAuth } from "../auth/useAuth";
 import { fmt } from "../utils/formatters";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
 import Navbar from "../components/Navbar";
@@ -10,11 +9,13 @@ import SkeletonItem from "../components/SkeletonItem";
 import SkeletonSummary from "../components/SkeletonSummary";
 import AddressSelector from "../components/AddressSelector";
 import ProductVisual from "../components/ProductVisual";
+import { AlertCircle, Check, CreditCard, MapPin, ShoppingBag } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const abortRef = useRef(null);
 
   const [items, setItems] = useState([]);
@@ -32,12 +33,13 @@ export default function Checkout() {
   useEffect(() => { document.title = "My Cart | Shopora"; }, []);
 
   useEffect(() => {
+    if (authLoading) return undefined;
+    if (!user) { navigate("/auth"); return undefined; }
     const controller = new AbortController();
     abortRef.current = controller;
     const { signal } = controller;
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) { navigate("/auth"); return; }
+    const loadCheckout = async () => {
       const userId = user.uid;
 
       // -- Fetch cart + products together ----------------------------------
@@ -108,13 +110,14 @@ export default function Checkout() {
       } finally {
         setLoadingProfile(false);
       }
-    });
+    };
+
+    loadCheckout();
 
     return () => {
       controller.abort();
-      unsubscribe();
     };
-  }, [navigate]);
+  }, [authLoading, navigate, user]);
 
   const subtotal = items.reduce((sum, { product, quantity }) => sum + product.price * quantity, 0);
   const discountAmt = discountEligible ? Math.round(subtotal * discountPercent / 100) : 0;
@@ -171,6 +174,18 @@ export default function Checkout() {
           >
             Your Order
           </h1>
+
+          <ol className="mt-6 grid max-w-xl grid-cols-3 gap-2" aria-label="Checkout progress">
+            {[
+              ["Address", MapPin, true],
+              ["Review", Check, true],
+              ["Payment", CreditCard, false],
+            ].map(([label, Icon, active]) => (
+              <li key={label} className={`flex min-h-11 items-center justify-center gap-2 rounded-lg border px-2 text-[10px] font-bold uppercase tracking-[0.08em] ${active ? "border-[var(--lux-ink)] bg-[var(--lux-ink)] text-[var(--lux-bg)]" : "border-[var(--lux-line)] text-[var(--lux-muted)]"}`}>
+                {createElement(Icon, { size: 14 })}{label}
+              </li>
+            ))}
+          </ol>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -218,9 +233,9 @@ export default function Checkout() {
                   </div>
                   <div className="h-px bg-stone-700 my-2" />
                   {membership && membership.tier !== "starter" && (
-                    <div className="rounded-xl border border-indigo-400/20 bg-indigo-400/10 px-3 py-2.5">
+                  <div className="rounded-xl border border-violet-400/20 bg-violet-400/10 px-3 py-2.5">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-semibold text-indigo-200">
+                        <span className="text-xs font-semibold text-violet-200">
                           {membership.name} member
                         </span>
                         <span className="text-xs font-bold text-emerald-300">
@@ -338,7 +353,7 @@ export default function Checkout() {
                 {discountEligible && (
                   <div className="bg-stone-100 border border-stone-200 rounded-2xl px-4 sm:px-6 py-4
                                   flex items-center gap-3 sm:gap-4">
-                    <span className="text-stone-900 text-lg shrink-0" aria-hidden="true">OK</span>
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--lux-mint)]/10 text-[var(--lux-mint)]" aria-hidden="true"><Check size={17} /></span>
                     <div>
                       <p className="text-sm font-medium text-stone-900">Welcome discount applied</p>
                       <p className="text-xs text-stone-500 mt-0.5">
@@ -359,7 +374,7 @@ export default function Checkout() {
 
 function PageShell({ children, menuOpen, setMenuOpen }) {
   return (
-    <div className="min-h-screen bg-[var(--lux-bg)] text-[var(--lux-ink)]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="shopora-checkout-page min-h-screen bg-[var(--lux-bg)] text-[var(--lux-ink)]">
       <Navbar variant="home" menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       {children}
     </div>
@@ -370,6 +385,7 @@ function ErrorMsg({ msg }) {
   return (
     <div className="max-w-md mx-auto mt-16 sm:mt-24 bg-red-50 border border-red-100
                     rounded-2xl p-6 sm:p-8 text-center">
+      <AlertCircle className="mx-auto mb-3 text-red-600" size={24} />
       <p className="text-red-600 text-sm" role="alert">{msg}</p>
     </div>
   );
@@ -378,8 +394,9 @@ function ErrorMsg({ msg }) {
 function EmptyCart({ navigate }) {
   return (
     <div className="flex flex-col items-center justify-center h-64 text-center gap-4 px-4">
-      <p className="text-4xl text-stone-300" aria-hidden="true">None</p>
-      <p className="text-stone-500 text-sm">Your cart is empty</p>
+      <ShoppingBag className="text-[var(--lux-muted)]" size={34} strokeWidth={1.4} aria-hidden="true" />
+      <p className="font-heading text-xl font-extrabold">Your bag is ready for a first pick.</p>
+      <p className="text-stone-500 text-sm">Browse the catalog and add a training essential.</p>
       <button
         onClick={() => navigate("/shop")}
         className="bg-stone-900 text-white text-sm px-8 py-3 rounded-full

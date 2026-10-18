@@ -1,9 +1,10 @@
 // src/pages/AdminCustomerDetail.jsx
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { createElement, useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import AdminNavbar from "../components/AdminNavbar";
 import { fmt } from "../utils/formatters";
 import { getAuthHeaders } from "../utils/getAuthHeaders";
+import { AlertTriangle, CalendarDays, CircleCheck, IndianRupee, ShoppingBag } from "lucide-react";
 
 const API_BASE = `${import.meta.env.VITE_API_URL}/api`;
 
@@ -132,8 +133,6 @@ const MobileOrderCard = ({ order, expanded, onToggle, onDownload, productMap }) 
 
 export default function AdminCustomerDetail() {
   const { userId } = useParams();
-  const navigate = useNavigate();
-
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -151,7 +150,7 @@ export default function AdminCustomerDetail() {
     (async () => {
       try {
         const headers = await getAuthHeaders();
-        const res = await fetch(`${API_BASE}/customers/${userId}`, { headers });
+        const res = await fetch(`${API_BASE}/customers/${userId}`, { headers, credentials: "include" });
         const json = await res.json();
         if (!json.success) throw new Error(json.error || "Failed to load customer");
         setData(json.data);
@@ -199,7 +198,7 @@ export default function AdminCustomerDetail() {
               `${addr.phone ? `<div style="margin-top:4px">${addr.phone}</div>` : ''}`;
           }
         }
-      } catch (e) {
+      } catch {
         // ignore profile fetch errors — invoice will still work without address
       }
       const itemsHtml = order.items.map(({ productId, quantity, price }) => {
@@ -279,19 +278,19 @@ export default function AdminCustomerDetail() {
   } = data || {};
 
   return (
-    <div className="min-h-screen bg-stone-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="admin-lux-page" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
         
       `}</style>
 
       <AdminNavbar menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-8 md:py-12">
+      <div className="admin-page-content max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-8 md:py-12">
 
         {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-100 rounded-2xl px-4 md:px-6 py-4 md:py-5 mb-6 md:mb-8">
-            <p className="text-sm text-red-600">⚠ {error}</p>
+            <p className="flex items-center gap-2 text-sm text-red-600"><AlertTriangle size={16} /> {error}</p>
           </div>
         )}
 
@@ -366,7 +365,7 @@ export default function AdminCustomerDetail() {
               <div>
                 {reminderSent ? (
                   <div className="px-4 py-2.5 bg-stone-50 border border-stone-300 rounded-lg text-sm text-stone-600 text-center">
-                    ✓ Reminder sent
+                    <CircleCheck size={15} className="mr-1 inline" /> Reminder sent
                   </div>
                 ) : reminderError ? (
                   <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600 text-center max-w-xs">
@@ -393,23 +392,23 @@ export default function AdminCustomerDetail() {
         {/* KPI Cards — 2 cols on mobile, 4 on sm+ */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-5 mb-8 md:mb-10">
           {[
-            { label: "Total Orders", value: loading ? null : orderCount, icon: "◎" },
-            { label: "Total Spend", value: loading ? null : fmt(totalSpend), icon: "₹" },
+            { label: "Total Orders", value: loading ? null : orderCount, Icon: ShoppingBag },
+            { label: "Total Spend", value: loading ? null : fmt(totalSpend), Icon: IndianRupee },
             {
               label: "First Order",
               value: loading ? null : new Date(firstOrder).toLocaleDateString("en-IN", {
                 day: "2-digit", month: "short", year: "numeric",
               }),
-              icon: "─",
+              Icon: CalendarDays,
             },
             {
               label: "Last Order",
               value: loading ? null : new Date(lastOrder).toLocaleDateString("en-IN", {
                 day: "2-digit", month: "short", year: "numeric",
               }),
-              icon: "─",
+              Icon: CalendarDays,
             },
-          ].map(({ label, value, icon }) => (
+          ].map(({ label, value, Icon }) => (
             <div key={label}
               className="bg-white border border-stone-200 rounded-2xl p-4 md:p-7
                             hover:border-stone-300 hover:shadow-lg transition-all duration-300">
@@ -426,7 +425,7 @@ export default function AdminCustomerDetail() {
                     {value}
                   </p>
                 )}
-                <span className="text-base md:text-xl text-stone-200 mb-0.5 shrink-0">{icon}</span>
+                {createElement(Icon, { className: "mb-0.5 shrink-0 text-[var(--lux-muted)]", size: 19 })}
               </div>
             </div>
           ))}

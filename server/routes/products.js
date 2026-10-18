@@ -11,6 +11,7 @@ const streamifier =
 
 const cloudinary =
   require("../lib/cloudinary");
+const { buildSearchQuery, importToCloudinary, searchPhotos } = require("../services/pexels");
 
 // Your New Constant Import
 const { LOW_STOCK_THRESHOLD } = require('../config/constants');
@@ -49,6 +50,38 @@ const productImageUpload =
         }
       },
   });
+
+async function prepareProductImage(input) {
+  const body = { ...input };
+  const autoPhoto = body.autoPhoto === true;
+  delete body.autoPhoto;
+
+  try {
+    if (!body.image && autoPhoto) {
+      const [photo] = await searchPhotos(buildSearchQuery(body), 1);
+      if (photo) {
+        body.image = photo.imageUrl;
+        body.imageSource = "pexels";
+        body.imageCredit = {
+          provider: "Pexels",
+          photographer: photo.photographer,
+          photographerUrl: photo.photographerUrl,
+          sourceUrl: photo.pexelsUrl,
+          sourceId: photo.pexelsId,
+        };
+      }
+    }
+
+    if (body.imageSource === "pexels" && body.image) {
+      body.image = (await importToCloudinary(body.image, body.productId)) || body.image;
+    }
+  } catch (error) {
+    console.warn("Product photo automation fallback:", error.message);
+  }
+
+  if (body.image && !body.imageSource) body.imageSource = "url";
+  return body;
+}
 
 /**
  * @route   GET /api/products
@@ -270,6 +303,7 @@ router.post(
       return res.json({
         imageUrl:
           result.secure_url,
+        imageSource: "upload",
       });
     } catch (error) {
       console.error(
@@ -286,6 +320,29 @@ router.post(
     }
   },
 );
+
+router.get("/image-search", verifyAdminRequest, async (req, res) => {
+  const query = String(req.query.q || buildSearchQuery({
+    name: req.query.name,
+    type: req.query.type,
+    category: req.query.category,
+  })).trim();
+  if (!query) return res.status(400).json({ error: "A product search query is required" });
+  try {
+    return res.json({ results: await searchPhotos(query, 6) });
+  } catch (error) {
+    const status = error.code === "PEXELS_NOT_CONFIGURED" ? 503 : 502;
+    return res.status(status).json({ error: error.message });
+  }
+});
+
+router.get("/photo-credits", async (_req, res) => {
+  const products = await Product.find({ imageSource: "pexels", "imageCredit.sourceUrl": { $exists: true, $ne: "" } })
+    .select("productId name image imageCredit")
+    .sort({ productId: 1 })
+    .lean();
+  return res.json(products);
+});
 
 /**
  * @route   GET /api/products/:id
@@ -316,7 +373,7 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', verifyAdminRequest, validateRequest(createProductSchema), async (req, res) => {
   try {
-    const body = req.body;
+    const body = await prepareProductImage(req.body);
     const existing = await Product.findOne({ productId: body.productId });
     if (existing) return res.status(400).json({ error: 'productId already exists' });
     const p = new Product(body);
@@ -342,7 +399,7 @@ router.put('/:id', verifyAdminRequest, validateRequest(updateProductSchema), asy
   }
 
   try {
-    const updated = await Product.findOneAndUpdate({ productId }, req.body, { returnDocument: 'after' });
+    const updated = await Product.findOneAndUpdate({ productId }, await prepareProductImage({ ...req.body, productId }), { returnDocument: 'after' });
     if (!updated) return res.status(404).json({ error: 'Product not found' });
     try { await cache.delPattern('products:'); } catch (e) { }
     res.json(updated);
